@@ -17,7 +17,7 @@ $this->params['breadcrumbs'][] = $this->title;
         $endpoint = "http://dbpedia.org/sparql";
         $sc = new SparqlClient();
         $sc->setEndpointRead($endpoint);
-        $q = "
+        $query = "
             PREFIX dbpo: <http://dbpedia.org/ontology/> SELECT *
             WHERE
             {
@@ -28,7 +28,7 @@ $this->params['breadcrumbs'][] = $this->title;
             }
             ORDER BY DESC(?date)
             ";
-        $rows = $sc->query($q, 'rows');
+        $rows = $sc->query($query, 'rows');
         $err = $sc->getErrors();
         if ($err) {
             print_r($err);
@@ -42,7 +42,6 @@ $this->params['breadcrumbs'][] = $this->title;
             echo '</b></td>';
         }
         echo '</tr>';
-
         foreach ($rows["result"]["rows"] as $row) {
             echo '<tr>';
             foreach ($rows["result"]["variables"] as $variable)
