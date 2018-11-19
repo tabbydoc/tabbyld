@@ -40,22 +40,14 @@ $this->params['breadcrumbs'][] = $this->title;
             echo '<td><b>';
             printf("%-20.20s", $variable);
             echo '</b></td>';
-            //echo $variable;
         }
         echo '</tr>';
-        //echo "\n";
 
         foreach ($rows["result"]["rows"] as $row) {
             echo '<tr>';
-            foreach ($rows["result"]["variables"] as $variable) {
-                echo '<td>';
-                //printf("%-20.20s", $row[$variable]);
-                echo $row[$variable];
-                echo '</td>';
-                //echo '|' . $row[$variable] . "\n";
-            }
+            foreach ($rows["result"]["variables"] as $variable)
+                echo '<td>' . $row[$variable] . '</td>';
             echo '</tr>';
-            //echo "\n";
         }
         echo '</table>';
     ?>
