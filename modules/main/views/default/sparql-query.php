@@ -18,15 +18,12 @@ $this->params['breadcrumbs'][] = $this->title;
         $sc = new SparqlClient();
         $sc->setEndpointRead($endpoint);
         $query = "
-            PREFIX dbpo: <http://dbpedia.org/ontology/> SELECT *
-            WHERE
-            {
-             ?e dbpo:series         <http://dbpedia.org/resource/The_Sopranos>.
-             ?e dbpo:releaseDate   ?date.
-             ?e dbpo:episodeNumber  ?number.
-             ?e dbpo:seasonNumber   ?season.
+            PREFIX dbpo: <http://dbpedia.org/ontology/>
+            SELECT *
+            WHERE {
+                ?class ?property dbpo:Person
             }
-            ORDER BY DESC(?date)
+            LIMIT 25
             ";
         $rows = $sc->query($query, 'rows');
         $err = $sc->getErrors();
