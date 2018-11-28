@@ -68,6 +68,7 @@ return [
     'TABLE_ANNOTATION_PAGE_TITLE' => 'Table annotation',
     'TABLE_ANNOTATION_PAGE_TEXT' => 'Resulting table',
     'TABLE_ANNOTATION_PAGE_CLASS_QUERY_RESULTS' => 'Class query results',
+    'TABLE_ANNOTATION_PAGE_CONCEPT_QUERY_RESULTS' => 'Concept query results',
     'TABLE_ANNOTATION_PAGE_PROPERTY_QUERY_RESULTS' => 'Property query results',
     /* Страница запроса SPARQL */
     'SPARQL_QUERY_PAGE_TITLE' => 'SPARQL query',
