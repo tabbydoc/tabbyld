@@ -22,39 +22,35 @@ class CanonicalTableAnnotator
         $formed_concepts = array();
         $formed_properties = array();
         $formed_entities = array();
-        $all_class_query_runtime = 0;
-        $all_concept_query_runtime = 0;
-        $all_property_query_runtime = 0;
         $class_query_results = array();
         $concept_query_results = array();
         $property_query_results = array();
-        $result = array();
-        // Формирование массивов концептов (классов) и свойств
+        // Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РјР°СЃСЃРёРІРѕРІ РЅРµРїРѕРІС‚РѕСЂСЏСЋС‰РёС…СЃСЏ РєРѕСЂСЂРµРєС‚РЅС‹С… Р·РЅР°С‡РµРЅРёР№ СЃС‚РѕР»Р±С†РѕРІ РґР»СЏ РїРѕРёСЃРєР° РєРѕРЅС†РµРїС‚РѕРІ Рё СЃРІРѕР№СЃС‚РІ РІ РѕС‚РЅРѕР»РѕРіРёРё
         foreach ($data as $item)
             foreach ($item as $heading => $value)
                 if ($heading == $heading_title) {
                     $string_array = explode(" | ", $value);
                     foreach ($string_array as $string) {
-                        // Формирование правильного значения для поиска концептов (классов)
+                        // Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РјР°СЃСЃРёРІР° РєРѕСЂСЂРµРєС‚РЅС‹С… Р·РЅР°С‡РµРЅРёР№ РґР»СЏ РїРѕРёСЃРєР°Р° РєРѕРЅС†РµРїС‚РѕРІ (РєР»Р°СЃСЃРѕРІ)
                         $str = ucwords(strtolower($string));
                         $correct_string = str_replace(' ', '', $str);
                         $formed_concepts[$string] = $correct_string;
-                        // Формирование правильного значения для поиска свойств класса (отношений)
+                        // Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РјР°СЃСЃРёРІР° РєРѕСЂСЂРµРєС‚РЅС‹С… Р·РЅР°С‡РµРЅРёР№ РґР»СЏ РїРѕРёСЃРєР°Р° СЃРІРѕР№СЃС‚РІ РєР»Р°СЃСЃРѕРІ (РѕС‚РЅРѕС€РµРЅРёР№)
                         $str = lcfirst(ucwords(strtolower($string)));
                         $correct_string = str_replace(' ', '', $str);
                         $formed_properties[$string] = $correct_string;
                     }
                 }
-        // Подключение к DBpedia
+        // РџРѕРґРєР»СЋС‡РµРЅРёРµ Рє DBpedia
         $endpoint = "http://dbpedia.org/sparql";
         $sparql_client = new SparqlClient();
         $sparql_client->setEndpointRead($endpoint);
         $error = $sparql_client->getErrors();
-        // Если нет ошибки в подключении
+        // Р•СЃР»Рё РЅРµС‚ РѕС€РёР±РѕРє РїСЂРё РїРѕРґРєР»СЋС‡РµРЅРёРё
         if (!$error) {
-            // Обход массива сформированных сущностей (классов и концептов)
+            // РћР±С…РѕРґ РјР°СЃСЃРёРІР° РєРѕСЂСЂРµРєС‚РЅС‹С… Р·РЅР°С‡РµРЅРёР№ СЃС‚РѕР»Р±С†РѕРІ РґР»СЏ РїРѕРёСЃРєР° РєР»Р°СЃСЃРѕРІ Рё РєРѕРЅС†РµРїС‚РѕРІ
             foreach ($formed_concepts as $fc_key => $fc_value) {
-                // SPARQL-запрос к DBpedia ontology для поиска классов
+                // SPARQL-Р·Р°РїСЂРѕСЃ Рє DBpedia ontology РґР»СЏ РїРѕРёСЃРєР° РєР»Р°СЃСЃРѕРІ
                 $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
                     SELECT dbo:$fc_value ?property ?object
                     WHERE { dbo:$fc_value ?property ?object }
@@ -62,11 +58,10 @@ class CanonicalTableAnnotator
                 $rows = $sparql_client->query($query, 'rows');
                 if ($rows["result"]["rows"]) {
                     array_push($class_query_results, $rows);
-                    $all_class_query_runtime += $rows["query_time"];
                     $formed_entities[$fc_key] = $fc_key . ' (dbo:' . $fc_value . ')';
                 }
                 if (!$rows["result"]["rows"]) {
-                    // SPARQL-запрос к DBpedia resource для поиска концептов
+                    // SPARQL-Р·Р°РїСЂРѕСЃ Рє DBpedia resource РґР»СЏ РїРѕРёСЃРєР° РєРѕРЅС†РµРїС‚РѕРІ
                     $query = "PREFIX db: <http://dbpedia.org/resource/>
                         SELECT db:$fc_value ?property ?object
                         WHERE { db:$fc_value ?property ?object }
@@ -74,14 +69,13 @@ class CanonicalTableAnnotator
                     $rows = $sparql_client->query($query, 'rows');
                     if ($rows["result"]["rows"]) {
                         array_push($concept_query_results, $rows);
-                        $all_concept_query_runtime += $rows["query_time"];
                         $formed_entities[$fc_key] = $fc_key . ' (db:' . $fc_value . ')';
                     }
                     if (!$rows["result"]["rows"]) {
-                        // Обход массива сформированных свойств классов (отношений)
+                        // РћР±С…РѕРґ РјР°СЃСЃРёРІР° РєРѕСЂСЂРµРєС‚РЅС‹С… Р·РЅР°РµС‡РЅРёР№ СЃС‚РѕР»Р±С†РѕРІ РґР»СЏ РїРѕРёСЃРєР° СЃРІРѕР№СЃС‚РІ РєР»Р°СЃСЃР° (РѕС‚РЅРѕС€РµРЅРёР№)
                         foreach ($formed_properties as $fp_key => $fp_value) {
                             if ($fp_key == $fc_key) {
-                                // SPARQL-запрос к DBpedia ontology для поиска свойств классов (отношений)
+                                // SPARQL-Р·Р°РїСЂРѕСЃ Рє DBpedia ontology РґР»СЏ РїРѕРёСЃРєР° СЃРІРѕР№СЃС‚РІ РєР»Р°СЃСЃРѕРІ (РѕС‚РЅРѕС€РµРЅРёР№)
                                 $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
                                     SELECT ?concept dbo:$fp_value ?object
                                     WHERE { ?concept dbo:$fp_value ?object }
@@ -89,11 +83,10 @@ class CanonicalTableAnnotator
                                 $rows = $sparql_client->query($query, 'rows');
                                 if ($rows["result"]["rows"]) {
                                     array_push($property_query_results, $rows);
-                                    $all_property_query_runtime += $rows["query_time"];
                                     $formed_entities[$fp_key] = $fp_key . ' (dbo:' . $fp_value . ')';
                                 }
                                 if (!$rows["result"]["rows"]) {
-                                    // SPARQL-запрос к DBpedia property для поиска свойств классов (отношений)
+                                    // SPARQL-Р·Р°РїСЂРѕСЃ Рє DBpedia property РґР»СЏ РїРѕРёСЃРєР° СЃРІРѕР№СЃС‚РІ РєР»Р°СЃСЃРѕРІ (РѕС‚РЅРѕС€РµРЅРёР№)
                                     $query = "PREFIX dbp: <http://dbpedia.org/property/>
                                         SELECT ?concept dbp:$fp_value ?object
                                         WHERE { ?concept dbp:$fp_value ?object }
@@ -101,7 +94,6 @@ class CanonicalTableAnnotator
                                     $rows = $sparql_client->query($query, 'rows');
                                     if ($rows["result"]["rows"]) {
                                         array_push($property_query_results, $rows);
-                                        $all_property_query_runtime += $rows["query_time"];
                                         $formed_entities[$fp_key] = $fp_key . ' (dbp:' . $fp_value . ')';
                                     }
                                     if (!$rows["result"]["rows"])
@@ -113,16 +105,12 @@ class CanonicalTableAnnotator
                 }
             }
         }
-        //
+        // РЎРѕС…СЂР°РЅРµРЅРёРµ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ Р°РЅРЅРѕС‚РёСЂРѕРІР°РЅРёСЏ РґР»СЏ СЃС‚РѕР»Р±С†РѕРІ СЃ Р·Р°РіРѕР»РѕРІРєР°РјРё
         if ($heading_title == self::ROW_HEADING_TITLE)
             $this->row_heading_concepts = $formed_entities;
-        //
         if ($heading_title == self::COLUMN_HEADING_TITLE)
             $this->column_heading_concepts = $formed_entities;
-        //
-        array_push($result, $class_query_results, $concept_query_results, $property_query_results,
-            $all_class_query_runtime, $all_concept_query_runtime, $all_property_query_runtime);
 
-        return $result;
+        return array($class_query_results, $concept_query_results, $property_query_results);
     }
 }

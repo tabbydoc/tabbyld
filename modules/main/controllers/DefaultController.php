@@ -140,8 +140,7 @@ class DefaultController extends Controller
         $property_query_results = array();
         $all_class_query_runtime = 0;
         $all_concept_query_runtime = 0;
-        $all_property_query_runtime = 0;
-
+        $all_property_query_runtime= 0;
         // Создание формы файла XLSX
         $file_form = new XLSXFileForm();
         if (Yii::$app->request->isPost) {
@@ -153,12 +152,11 @@ class DefaultController extends Controller
                     'setIndexSheetByName' => true,
                     'getOnlySheet' => 'CANONICAL TABLE',
                 ]);
-                //
+                // Создание объекта аннотатора таблиц
                 $annotator = new CanonicalTableAnnotator();
-                //
-                list($class_query_results, $concept_query_results, $property_query_results,
-                    $all_class_query_runtime, $all_concept_query_runtime, $all_property_query_runtime
-                    ) = $annotator->annotateTableHeading($data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
+                // Аннотирование столбца "ColumnHeading"
+                list($class_query_results, $concept_query_results, $property_query_results) = $annotator
+                    ->annotateTableHeading($data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
                 // Обход XSLX-данных
                 foreach ($data as $key => $item)
                     foreach ($item as $heading => $value) {
@@ -177,6 +175,13 @@ class DefaultController extends Controller
                                     }
                         }
                     }
+                // Формирование итогового времени затраченного на поиск сущностей в DBpedia
+                foreach ($class_query_results as $class_query_result)
+                    $all_class_query_runtime += $class_query_result['query_time'];
+                foreach ($concept_query_results as $concept_query_result)
+                    $all_concept_query_runtime += $concept_query_result['query_time'];
+                foreach ($property_query_results as $property_query_result)
+                    $all_property_query_runtime += $property_query_result['query_time'];
             }
         }
 
