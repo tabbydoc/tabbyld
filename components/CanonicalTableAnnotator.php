@@ -11,12 +11,20 @@ use BorderCloud\SPARQL\SparqlClient;
  */
 class CanonicalTableAnnotator
 {
-    const ROW_HEADING_TITLE = 'RowHeading1';
-    const COLUMN_HEADING_TITLE = 'ColumnHeading';
+    const DATA_TITLE = 'DATA';                    // Имя первого заголовка столбца канонической таблицы
+    const ROW_HEADING_TITLE = 'RowHeading1';      // Имя второго заголовка столбца канонической таблицы
+    const COLUMN_HEADING_TITLE = 'ColumnHeading'; // Имя третьего заголовка столбца канонической таблицы
 
-    public $row_heading_concepts = array();
-    public $column_heading_concepts = array();
+    public $row_heading_entities = array();    // Массив найденных сущностей для столбца "RowHeading"
+    public $column_heading_entities = array(); // Массив найденных сущностей для столбца "ColumnHeading"
 
+    /**
+     * Аннотиция столбцов содержащих значения заголовков таблицы (RowHeading и ColumnHeading)
+     *
+     * @param $data - данные каноничечкой таблицы
+     * @param $heading_title - имя столбца
+     * @return array - массив с результатми поиска сущностей в онтологии DBpedia
+     */
     public function annotateTableHeading($data, $heading_title)
     {
         $formed_concepts = array();
@@ -107,9 +115,9 @@ class CanonicalTableAnnotator
         }
         // Сохранение результатов аннотирования для столбцов с заголовками
         if ($heading_title == self::ROW_HEADING_TITLE)
-            $this->row_heading_concepts = $formed_entities;
+            $this->row_heading_entities = $formed_entities;
         if ($heading_title == self::COLUMN_HEADING_TITLE)
-            $this->column_heading_concepts = $formed_entities;
+            $this->column_heading_entities = $formed_entities;
 
         return array($class_query_results, $concept_query_results, $property_query_results);
     }

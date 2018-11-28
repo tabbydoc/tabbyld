@@ -67,9 +67,12 @@ return [
     /* Страница аннотирования таблиц */
     'TABLE_ANNOTATION_PAGE_TITLE' => 'Аннотирование таблицы',
     'TABLE_ANNOTATION_PAGE_TEXT' => 'Полученная таблица',
-    'TABLE_ANNOTATION_PAGE_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам',
-    'TABLE_ANNOTATION_PAGE_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам',
-    'TABLE_ANNOTATION_PAGE_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для RowHeading',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для RowHeading',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для RowHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для ColumnHeading',
     /* Страница запроса SPARQL */
     'SPARQL_QUERY_PAGE_TITLE' => 'Запрос SPARQL',
 

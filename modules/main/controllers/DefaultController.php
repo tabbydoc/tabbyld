@@ -135,12 +135,18 @@ class DefaultController extends Controller
     public function actionAnnotateTable()
     {
         $data = array();
-        $class_query_results = array();
-        $concept_query_results = array();
-        $property_query_results = array();
-        $all_class_query_runtime = 0;
-        $all_concept_query_runtime = 0;
-        $all_property_query_runtime= 0;
+        $row_heading_class_query_results = array();
+        $row_heading_concept_query_results = array();
+        $row_heading_property_query_results = array();
+        $all_row_heading_class_query_runtime = 0;
+        $all_row_heading_concept_query_runtime = 0;
+        $all_row_heading_property_query_runtime= 0;
+        $column_heading_class_query_results = array();
+        $column_heading_concept_query_results = array();
+        $column_heading_property_query_results = array();
+        $all_column_heading_class_query_runtime = 0;
+        $all_column_heading_concept_query_runtime = 0;
+        $all_column_heading_property_query_runtime= 0;
         // Создание формы файла XLSX
         $file_form = new XLSXFileForm();
         if (Yii::$app->request->isPost) {
@@ -154,17 +160,33 @@ class DefaultController extends Controller
                 ]);
                 // Создание объекта аннотатора таблиц
                 $annotator = new CanonicalTableAnnotator();
+                // Аннотирование столбца "RowHeading"
+                list($row_heading_class_query_results, $row_heading_concept_query_results,
+                    $row_heading_property_query_results) = $annotator
+                    ->annotateTableHeading($data, CanonicalTableAnnotator::ROW_HEADING_TITLE);
                 // Аннотирование столбца "ColumnHeading"
-                list($class_query_results, $concept_query_results, $property_query_results) = $annotator
-                    ->annotateTableHeading($data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
+                list($column_heading_class_query_results, $column_heading_concept_query_results,
+                    $column_heading_property_query_results) = $annotator
+                        ->annotateTableHeading($data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
                 // Обход XSLX-данных
                 foreach ($data as $key => $item)
                     foreach ($item as $heading => $value) {
                         $string_array = explode(" | ", $value);
                         foreach ($string_array as $str_key => $string) {
-                            // Обработка столбца ColumnHeading
-                            if ($heading == 'ColumnHeading')
-                                foreach ($annotator->column_heading_concepts as $chc_key => $formed_entity)
+                            // Обработка столбца "RowHeading"
+                            if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE)
+                                foreach ($annotator->row_heading_entities as $chc_key => $formed_entity)
+                                    if ($string == $chc_key) {
+                                        if ($str_key > 0)
+                                            $data[$key][$heading] .= $formed_entity;
+                                        if ($str_key == 0 && count($string_array) == 1)
+                                            $data[$key][$heading] = $formed_entity;
+                                        if ($str_key == 0 && count($string_array) > 1)
+                                            $data[$key][$heading] = $formed_entity . ' | ';
+                                    }
+                            // Обработка столбца "ColumnHeading"
+                            if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE)
+                                foreach ($annotator->column_heading_entities as $chc_key => $formed_entity)
                                     if ($string == $chc_key) {
                                         if ($str_key > 0)
                                             $data[$key][$heading] .= $formed_entity;
@@ -176,24 +198,36 @@ class DefaultController extends Controller
                         }
                     }
                 // Формирование итогового времени затраченного на поиск сущностей в DBpedia
-                foreach ($class_query_results as $class_query_result)
-                    $all_class_query_runtime += $class_query_result['query_time'];
-                foreach ($concept_query_results as $concept_query_result)
-                    $all_concept_query_runtime += $concept_query_result['query_time'];
-                foreach ($property_query_results as $property_query_result)
-                    $all_property_query_runtime += $property_query_result['query_time'];
+                foreach ($row_heading_class_query_results as $class_query_result)
+                    $all_row_heading_class_query_runtime += $class_query_result['query_time'];
+                foreach ($row_heading_concept_query_results as $concept_query_result)
+                    $all_row_heading_concept_query_runtime += $concept_query_result['query_time'];
+                foreach ($row_heading_property_query_results as $property_query_result)
+                    $all_row_heading_property_query_runtime += $property_query_result['query_time'];
+                foreach ($column_heading_class_query_results as $class_query_result)
+                    $all_column_heading_class_query_runtime += $class_query_result['query_time'];
+                foreach ($column_heading_concept_query_results as $concept_query_result)
+                    $all_column_heading_concept_query_runtime += $concept_query_result['query_time'];
+                foreach ($column_heading_property_query_results as $property_query_result)
+                    $all_column_heading_property_query_runtime += $property_query_result['query_time'];
             }
         }
 
         return $this->render('annotate-table', [
             'file_form'=>$file_form,
             'data'=>$data,
-            'class_query_results'=>$class_query_results,
-            'property_query_results'=>$property_query_results,
-            'concept_query_results'=>$concept_query_results,
-            'all_class_query_runtime'=>$all_class_query_runtime,
-            'all_concept_query_runtime'=>$all_concept_query_runtime,
-            'all_property_query_runtime'=>$all_property_query_runtime
+            'row_heading_class_query_results'=>$row_heading_class_query_results,
+            'row_heading_property_query_results'=>$row_heading_property_query_results,
+            'row_heading_concept_query_results'=>$row_heading_concept_query_results,
+            'column_heading_class_query_results'=>$column_heading_class_query_results,
+            'column_heading_concept_query_results'=>$column_heading_concept_query_results,
+            'column_heading_property_query_results'=>$column_heading_property_query_results,
+            'all_row_heading_class_query_runtime'=>$all_row_heading_class_query_runtime,
+            'all_row_heading_concept_query_runtime'=>$all_row_heading_concept_query_runtime,
+            'all_row_heading_property_query_runtime'=>$all_row_heading_property_query_runtime,
+            'all_column_heading_class_query_runtime'=>$all_column_heading_class_query_runtime,
+            'all_column_heading_concept_query_runtime'=>$all_column_heading_concept_query_runtime,
+            'all_column_heading_property_query_runtime'=>$all_column_heading_property_query_runtime
         ]);
     }
 
