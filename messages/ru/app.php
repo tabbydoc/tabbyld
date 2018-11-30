@@ -67,6 +67,7 @@ return [
     /* Страница аннотирования таблиц */
     'TABLE_ANNOTATION_PAGE_TITLE' => 'Аннотирование таблицы',
     'TABLE_ANNOTATION_PAGE_TEXT' => 'Полученная таблица',
+    'TABLE_ANNOTATION_PAGE_DATA_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для DATA',
     'TABLE_ANNOTATION_PAGE_ROW_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для RowHeading',
     'TABLE_ANNOTATION_PAGE_ROW_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для RowHeading',
     'TABLE_ANNOTATION_PAGE_ROW_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для RowHeading',

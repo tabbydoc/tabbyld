@@ -140,13 +140,15 @@ class DefaultController extends Controller
         $row_heading_property_query_results = array();
         $all_row_heading_class_query_runtime = 0;
         $all_row_heading_concept_query_runtime = 0;
-        $all_row_heading_property_query_runtime= 0;
+        $all_row_heading_property_query_runtime = 0;
         $column_heading_class_query_results = array();
         $column_heading_concept_query_results = array();
         $column_heading_property_query_results = array();
         $all_column_heading_class_query_runtime = 0;
         $all_column_heading_concept_query_runtime = 0;
-        $all_column_heading_property_query_runtime= 0;
+        $all_column_heading_property_query_runtime = 0;
+        $data_concept_query_results = array();
+        $all_data_concept_query_runtime = 0;
         // Создание формы файла XLSX
         $file_form = new XLSXFileForm();
         if (Yii::$app->request->isPost) {
@@ -160,6 +162,8 @@ class DefaultController extends Controller
                 ]);
                 // Создание объекта аннотатора таблиц
                 $annotator = new CanonicalTableAnnotator();
+                // Аннотирование столбца "DATA"
+                $data_concept_query_results = $annotator->annotateTableData($data);
                 // Аннотирование столбца "RowHeading"
                 list($row_heading_class_query_results, $row_heading_concept_query_results,
                     $row_heading_property_query_results) = $annotator
@@ -173,10 +177,16 @@ class DefaultController extends Controller
                     foreach ($item as $heading => $value) {
                         $string_array = explode(" | ", $value);
                         foreach ($string_array as $str_key => $string) {
+                            // Обработка столбца "DATA"
+                            if ($heading == CanonicalTableAnnotator::DATA_TITLE) {
+                                foreach ($annotator->data_entities as $de_key => $formed_entity)
+                                    if ($string == $de_key)
+                                        $data[$key][$heading] = $formed_entity;
+                            }
                             // Обработка столбца "RowHeading"
                             if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE)
-                                foreach ($annotator->row_heading_entities as $chc_key => $formed_entity)
-                                    if ($string == $chc_key) {
+                                foreach ($annotator->row_heading_entities as $rhe_key => $formed_entity)
+                                    if ($string == $rhe_key) {
                                         if ($str_key > 0)
                                             $data[$key][$heading] .= $formed_entity;
                                         if ($str_key == 0 && count($string_array) == 1)
@@ -186,8 +196,8 @@ class DefaultController extends Controller
                                     }
                             // Обработка столбца "ColumnHeading"
                             if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE)
-                                foreach ($annotator->column_heading_entities as $chc_key => $formed_entity)
-                                    if ($string == $chc_key) {
+                                foreach ($annotator->column_heading_entities as $che_key => $formed_entity)
+                                    if ($string == $che_key) {
                                         if ($str_key > 0)
                                             $data[$key][$heading] .= $formed_entity;
                                         if ($str_key == 0 && count($string_array) == 1)
@@ -198,6 +208,8 @@ class DefaultController extends Controller
                         }
                     }
                 // Формирование итогового времени затраченного на поиск сущностей в DBpedia
+                foreach ($data_concept_query_results as $foo => $concept_query_result)
+                    $all_data_concept_query_runtime += $concept_query_result['query_time'];
                 foreach ($row_heading_class_query_results as $class_query_result)
                     $all_row_heading_class_query_runtime += $class_query_result['query_time'];
                 foreach ($row_heading_concept_query_results as $concept_query_result)
@@ -214,20 +226,22 @@ class DefaultController extends Controller
         }
 
         return $this->render('annotate-table', [
-            'file_form'=>$file_form,
-            'data'=>$data,
-            'row_heading_class_query_results'=>$row_heading_class_query_results,
-            'row_heading_property_query_results'=>$row_heading_property_query_results,
-            'row_heading_concept_query_results'=>$row_heading_concept_query_results,
-            'column_heading_class_query_results'=>$column_heading_class_query_results,
-            'column_heading_concept_query_results'=>$column_heading_concept_query_results,
-            'column_heading_property_query_results'=>$column_heading_property_query_results,
-            'all_row_heading_class_query_runtime'=>$all_row_heading_class_query_runtime,
-            'all_row_heading_concept_query_runtime'=>$all_row_heading_concept_query_runtime,
-            'all_row_heading_property_query_runtime'=>$all_row_heading_property_query_runtime,
-            'all_column_heading_class_query_runtime'=>$all_column_heading_class_query_runtime,
-            'all_column_heading_concept_query_runtime'=>$all_column_heading_concept_query_runtime,
-            'all_column_heading_property_query_runtime'=>$all_column_heading_property_query_runtime
+            'file_form' => $file_form,
+            'data' => $data,
+            'data_concept_query_results' => $data_concept_query_results,
+            'row_heading_class_query_results' => $row_heading_class_query_results,
+            'row_heading_property_query_results' => $row_heading_property_query_results,
+            'row_heading_concept_query_results' => $row_heading_concept_query_results,
+            'column_heading_class_query_results' => $column_heading_class_query_results,
+            'column_heading_concept_query_results' => $column_heading_concept_query_results,
+            'column_heading_property_query_results' => $column_heading_property_query_results,
+            'all_data_concept_query_runtime' => $all_data_concept_query_runtime,
+            'all_row_heading_class_query_runtime' => $all_row_heading_class_query_runtime,
+            'all_row_heading_concept_query_runtime' => $all_row_heading_concept_query_runtime,
+            'all_row_heading_property_query_runtime' => $all_row_heading_property_query_runtime,
+            'all_column_heading_class_query_runtime' => $all_column_heading_class_query_runtime,
+            'all_column_heading_concept_query_runtime' => $all_column_heading_concept_query_runtime,
+            'all_column_heading_property_query_runtime' => $all_column_heading_property_query_runtime
         ]);
     }
 
