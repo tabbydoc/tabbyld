@@ -2,7 +2,7 @@
 
 /* @var $this yii\web\View */
 /* @var $form yii\bootstrap\ActiveForm */
-/* @var $file_form app\modules\main\models\XLSXFileForm */
+/* @var $file_form app\modules\main\models\ExcelFileForm */
 /* @var $data app\modules\main\controllers\DefaultController */
 /* @var $data_concept_query_results app\modules\main\controllers\DefaultController */
 /* @var $row_heading_class_query_results app\modules\main\controllers\DefaultController */
@@ -33,17 +33,17 @@ $this->params['breadcrumbs'][] = $this->title;
         <div class="col-lg-5">
 
             <?php $form = ActiveForm::begin([
-                'id'=>'import-xlsx-file-form',
+                'id'=>'import-excel-file-form',
                 'options' => ['enctype' => 'multipart/form-data']
             ]); ?>
 
             <?= $form->errorSummary($file_form); ?>
 
-            <?= $form->field($file_form, 'xlsx_file')->fileInput() ?>
+            <?= $form->field($file_form, 'excel_file')->fileInput() ?>
 
             <div class="form-group">
                 <?= Html::submitButton(Yii::t('app', 'BUTTON_IMPORT'),
-                    ['class' => 'btn btn-success', 'name'=>'import-xlsx-file-button']) ?>
+                    ['class' => 'btn btn-success', 'name'=>'import-excel-file-button']) ?>
             </div>
 
             <?php ActiveForm::end(); ?>

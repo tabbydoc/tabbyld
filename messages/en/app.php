@@ -92,8 +92,8 @@ return [
     'LOGIN_FORM_MESSAGE_INCORRECT_USERNAME_OR_PASSWORD' => 'Username or password is incorrect.',
     'LOGIN_FORM_MESSAGE_BLOCKED_ACCOUNT' => 'Your account has been blocked.',
     'LOGIN_FORM_MESSAGE_NOT_CONFIRMED_ACCOUNT' => 'Your account is not confirmed.',
-    /* XLSXFileForm */
-    'XLSX_FILE_FORM_XLSX_FILE' => 'XLSX file',
+    /* ExcelFileForm */
+    'EXCEL_FILE_FORM_EXCEL_FILE' => 'Excel file (*.xls, *.xlsx)',
 
     /* Модели */
     /* Lang */

@@ -10,7 +10,7 @@ use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
 use app\modules\main\models\LoginForm;
 use app\modules\main\models\ContactForm;
-use app\modules\main\models\XLSXFileForm;
+use app\modules\main\models\ExcelFileForm;
 use moonland\phpexcel\Excel;
 use app\components\CanonicalTableAnnotator;
 
@@ -149,16 +149,16 @@ class DefaultController extends Controller
         $all_column_heading_property_query_runtime = 0;
         $data_concept_query_results = array();
         $all_data_concept_query_runtime = 0;
-        // Создание формы файла XLSX
-        $file_form = new XLSXFileForm();
+        // Создание формы файла Excel
+        $file_form = new ExcelFileForm();
         if (Yii::$app->request->isPost) {
-            $file_form->xlsx_file = UploadedFile::getInstance($file_form, 'xlsx_file');
+            $file_form->excel_file = UploadedFile::getInstance($file_form, 'excel_file');
             if ($file_form->validate()) {
                 // Получение данных из файла XSLX
-                $data = Excel::import($file_form->xlsx_file->tempName, [
+                $data = Excel::import($file_form->excel_file->tempName, [
                     'setFirstRecordAsKeys' => true,
                     'setIndexSheetByName' => true,
-                    'getOnlySheet' => 'CANONICAL TABLE',
+                    'getOnlySheet' => ExcelFileForm::SHEET_NAME,
                 ]);
                 // Создание объекта аннотатора таблиц
                 $annotator = new CanonicalTableAnnotator();

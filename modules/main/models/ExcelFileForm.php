@@ -6,11 +6,13 @@ use Yii;
 use yii\base\Model;
 
 /**
- * Class XLSXFileForm
+ * Class ExcelFileForm.
  */
-class XLSXFileForm extends Model
+class ExcelFileForm extends Model
 {
-    public $xlsx_file;
+    const SHEET_NAME = 'CANONICAL TABLE';
+
+    public $excel_file;
 
     /**
      * @return array the validation rules
@@ -18,8 +20,8 @@ class XLSXFileForm extends Model
     public function rules()
     {
         return array(
-            array(['xlsx_file'], 'required'),
-            array(['xlsx_file'], 'file', 'extensions'=>'xlsx', 'checkExtensionByMimeType'=>false),
+            array(['excel_file'], 'required'),
+            array(['excel_file'], 'file', 'extensions'=>'xls, xlsx', 'checkExtensionByMimeType'=>false),
         );
     }
 
@@ -29,7 +31,7 @@ class XLSXFileForm extends Model
     public function attributeLabels()
     {
         return array(
-            'xlsx_file' => Yii::t('app', 'XLSX_FILE_FORM_XLSX_FILE'),
+            'excel_file' => Yii::t('app', 'EXCEL_FILE_FORM_EXCEL_FILE'),
         );
     }
 }

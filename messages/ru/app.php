@@ -92,8 +92,8 @@ return [
     'LOGIN_FORM_MESSAGE_INCORRECT_USERNAME_OR_PASSWORD' => 'Неверное имя пользователя или пароль.',
     'LOGIN_FORM_MESSAGE_BLOCKED_ACCOUNT' => 'Ваш аккаунт заблокирован.',
     'LOGIN_FORM_MESSAGE_NOT_CONFIRMED_ACCOUNT' => 'Ваш аккаунт не подтвержден.',
-    /* XLSXFileForm */
-    'XLSX_FILE_FORM_XLSX_FILE' => 'Файл XLSX',
+    /* ExcelFileForm */
+    'EXCEL_FILE_FORM_EXCEL_FILE' => 'Файл Excel (*.xls, *.xlsx)',
 
     /* Модели */
     /* Lang */
