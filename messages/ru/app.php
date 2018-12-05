@@ -12,7 +12,6 @@ return [
     'NAV_SIGN_IN' => 'Вход',
     'NAV_SIGN_OUT' => 'Выход',
     'NAV_TABLE_ANNOTATION' => 'Аннотирование таблицы',
-    'NAV_SPARQL_QUERY' => 'Запрос SPARQL',
     /* Пункты правого меню */
     'SIDE_NAV_POSSIBLE_ACTIONS' => 'Возможные действия',
 

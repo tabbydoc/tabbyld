@@ -244,14 +244,4 @@ class DefaultController extends Controller
             'all_column_heading_property_query_runtime' => $all_column_heading_property_query_runtime
         ]);
     }
-
-    /**
-     * Страница запроса SPARQL.
-     *
-     * @return string
-     */
-    public function actionSparqlQuery()
-    {
-        return $this->render('sparql-query');
-    }
 }

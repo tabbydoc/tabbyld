@@ -39,8 +39,7 @@ AppAsset::register($this);
     echo Nav::widget([
         'options' => ['class' => 'navbar-nav navbar-left'],
         'items' => [
-            ['label' => Yii::t('app', 'NAV_TABLE_ANNOTATION'), 'url' => ['/main/default/annotate-table']],
-            ['label' => Yii::t('app', 'NAV_SPARQL_QUERY'), 'url' => ['/main/default/sparql-query']]
+            ['label' => Yii::t('app', 'NAV_TABLE_ANNOTATION'), 'url' => ['/main/default/annotate-table']]
         ],
     ]);
     echo "<form class='navbar-form navbar-right'>" . WLang::widget() . "</form>";
