@@ -65,7 +65,10 @@ return [
     'SIGN_IN_PAGE_RESET_LINK' => 'reset it',
     /* Страница аннотирования таблиц */
     'TABLE_ANNOTATION_PAGE_TITLE' => 'Table annotation',
-    'TABLE_ANNOTATION_PAGE_TEXT' => 'Resulting table',
+    'TABLE_ANNOTATION_PAGE_RESULTING_TABLE' => 'Resulting table',
+    'TABLE_ANNOTATION_PAGE_DATA_RESULTS' => 'DATA results',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_RESULTS' => 'RowHeading results',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_RESULTS' => 'ColumnHeading results',
     'TABLE_ANNOTATION_PAGE_DATA_CONCEPT_QUERY_RESULTS' => 'Concept query results for DATA',
     'TABLE_ANNOTATION_PAGE_ROW_HEADING_CLASS_QUERY_RESULTS' => 'Class query results for RowHeading',
     'TABLE_ANNOTATION_PAGE_ROW_HEADING_CONCEPT_QUERY_RESULTS' => 'Concept query results for RowHeading',
@@ -73,6 +76,8 @@ return [
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Class query results for ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Concept query results for ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Property query results for ColumnHeading',
+    /* Сообщения для страницы аннотирования таблиц */
+    'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'You have successfully annotated canonical table!',
 
     /* Формы */
     /* ContactForm */

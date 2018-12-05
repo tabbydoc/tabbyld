@@ -65,7 +65,10 @@ return [
     'SIGN_IN_PAGE_RESET_LINK' => 'сбросить его',
     /* Страница аннотирования таблиц */
     'TABLE_ANNOTATION_PAGE_TITLE' => 'Аннотирование таблицы',
-    'TABLE_ANNOTATION_PAGE_TEXT' => 'Полученная таблица',
+    'TABLE_ANNOTATION_PAGE_RESULTING_TABLE' => 'Полученная таблица',
+    'TABLE_ANNOTATION_PAGE_DATA_RESULTS' => 'Результаты запросов для DATA',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_RESULTS' => 'Результаты запросов для RowHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_RESULTS' => 'Результаты запросов для ColumnHeading',
     'TABLE_ANNOTATION_PAGE_DATA_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для DATA',
     'TABLE_ANNOTATION_PAGE_ROW_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для RowHeading',
     'TABLE_ANNOTATION_PAGE_ROW_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для RowHeading',
@@ -73,6 +76,8 @@ return [
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для ColumnHeading',
+    /* Сообщения для страницы аннотирования таблиц */
+    'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'Вы успешно аннотировали каноническую таблицу!',
 
     /* Формы */
     /* ContactForm */

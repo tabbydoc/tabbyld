@@ -221,6 +221,9 @@ class DefaultController extends Controller
                     $all_column_heading_concept_query_runtime += $concept_query_result['query_time'];
                 foreach ($column_heading_property_query_results as $property_query_result)
                     $all_column_heading_property_query_runtime += $property_query_result['query_time'];
+
+                // Вывод сообщения об успешном аннотировании таблицы
+                Yii::$app->getSession()->setFlash('success', Yii::t('app', 'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE'));
             }
         }
 
