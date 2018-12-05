@@ -73,8 +73,6 @@ return [
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Class query results for ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Concept query results for ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Property query results for ColumnHeading',
-    /* Страница запроса SPARQL */
-    'SPARQL_QUERY_PAGE_TITLE' => 'SPARQL query',
 
     /* Формы */
     /* ContactForm */

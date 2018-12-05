@@ -178,33 +178,32 @@ class DefaultController extends Controller
                         $string_array = explode(" | ", $value);
                         foreach ($string_array as $str_key => $string) {
                             // Обработка столбца "DATA"
-                            if ($heading == CanonicalTableAnnotator::DATA_TITLE) {
-                                foreach ($annotator->data_entities as $de_key => $formed_entity)
-                                    if ($string == $de_key)
-                                        $data[$key][$heading] = $formed_entity;
-                            }
+                            if ($heading == CanonicalTableAnnotator::DATA_TITLE)
+                                $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
+                                    $annotator->data_entities,
+                                    $data[$key][$heading],
+                                    $string_array,
+                                    $str_key,
+                                    $string
+                                );
                             // Обработка столбца "RowHeading"
                             if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE)
-                                foreach ($annotator->row_heading_entities as $rhe_key => $formed_entity)
-                                    if ($string == $rhe_key) {
-                                        if ($str_key > 0)
-                                            $data[$key][$heading] .= $formed_entity;
-                                        if ($str_key == 0 && count($string_array) == 1)
-                                            $data[$key][$heading] = $formed_entity;
-                                        if ($str_key == 0 && count($string_array) > 1)
-                                            $data[$key][$heading] = $formed_entity . ' | ';
-                                    }
+                                $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
+                                    $annotator->row_heading_entities,
+                                    $data[$key][$heading],
+                                    $string_array,
+                                    $str_key,
+                                    $string
+                                );
                             // Обработка столбца "ColumnHeading"
                             if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE)
-                                foreach ($annotator->column_heading_entities as $che_key => $formed_entity)
-                                    if ($string == $che_key) {
-                                        if ($str_key > 0)
-                                            $data[$key][$heading] .= $formed_entity;
-                                        if ($str_key == 0 && count($string_array) == 1)
-                                            $data[$key][$heading] = $formed_entity;
-                                        if ($str_key == 0 && count($string_array) > 1)
-                                            $data[$key][$heading] = $formed_entity . ' | ';
-                                    }
+                                $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
+                                    $annotator->column_heading_entities,
+                                    $data[$key][$heading],
+                                    $string_array,
+                                    $str_key,
+                                    $string
+                                );
                         }
                     }
                 // Формирование итогового времени затраченного на поиск сущностей в DBpedia

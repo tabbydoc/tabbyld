@@ -73,8 +73,6 @@ return [
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для ColumnHeading',
-    /* Страница запроса SPARQL */
-    'SPARQL_QUERY_PAGE_TITLE' => 'Запрос SPARQL',
 
     /* Формы */
     /* ContactForm */
