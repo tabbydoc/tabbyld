@@ -76,6 +76,7 @@ return [
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY' => 'Родительские классы для: ',
     /* Сообщения для страницы аннотирования таблиц */
     'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'Вы успешно аннотировали каноническую таблицу!',
 

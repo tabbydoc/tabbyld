@@ -149,6 +149,9 @@ class DefaultController extends Controller
         $all_column_heading_property_query_runtime = 0;
         $data_concept_query_results = array();
         $all_data_concept_query_runtime = 0;
+        $parent_data_classes = array();
+        $parent_row_heading_classes = array();
+        $parent_column_heading_classes = array();
         // Создание формы файла Excel
         $file_form = new ExcelFileForm();
         if (Yii::$app->request->isPost) {
@@ -172,6 +175,10 @@ class DefaultController extends Controller
                 list($column_heading_class_query_results, $column_heading_concept_query_results,
                     $column_heading_property_query_results) = $annotator
                         ->annotateTableHeading($data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
+                // Списки родительских классов для аннотированных сущностей
+                $parent_data_classes = $annotator->parent_data_classes;
+                $parent_row_heading_classes = $annotator->parent_row_heading_classes;
+                $parent_column_heading_classes = $annotator->parent_column_heading_classes;
                 // Обход XSLX-данных
                 foreach ($data as $key => $item)
                     foreach ($item as $heading => $value) {
@@ -181,6 +188,7 @@ class DefaultController extends Controller
                             if ($heading == CanonicalTableAnnotator::DATA_TITLE)
                                 $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
                                     $annotator->data_entities,
+                                    $annotator->parent_data_classes,
                                     $data[$key][$heading],
                                     $string_array,
                                     $str_key,
@@ -190,6 +198,7 @@ class DefaultController extends Controller
                             if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE)
                                 $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
                                     $annotator->row_heading_entities,
+                                    $annotator->parent_row_heading_classes,
                                     $data[$key][$heading],
                                     $string_array,
                                     $str_key,
@@ -199,6 +208,7 @@ class DefaultController extends Controller
                             if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE)
                                 $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
                                     $annotator->column_heading_entities,
+                                    $annotator->parent_column_heading_classes,
                                     $data[$key][$heading],
                                     $string_array,
                                     $str_key,
@@ -243,7 +253,10 @@ class DefaultController extends Controller
             'all_row_heading_property_query_runtime' => $all_row_heading_property_query_runtime,
             'all_column_heading_class_query_runtime' => $all_column_heading_class_query_runtime,
             'all_column_heading_concept_query_runtime' => $all_column_heading_concept_query_runtime,
-            'all_column_heading_property_query_runtime' => $all_column_heading_property_query_runtime
+            'all_column_heading_property_query_runtime' => $all_column_heading_property_query_runtime,
+            'parent_data_classes' => $parent_data_classes,
+            'parent_row_heading_classes' => $parent_row_heading_classes,
+            'parent_column_heading_classes' => $parent_column_heading_classes
         ]);
     }
 }

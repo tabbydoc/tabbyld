@@ -11,13 +11,16 @@ use BorderCloud\SPARQL\SparqlClient;
  */
 class CanonicalTableAnnotator
 {
-    const DATA_TITLE = 'DATA';                    // Имя первого заголовка столбца канонической таблицы
-    const ROW_HEADING_TITLE = 'RowHeading1';      // Имя второго заголовка столбца канонической таблицы
-    const COLUMN_HEADING_TITLE = 'ColumnHeading'; // Имя третьего заголовка столбца канонической таблицы
+    const DATA_TITLE = 'DATA';                       // Имя первого заголовка столбца канонической таблицы
+    const ROW_HEADING_TITLE = 'RowHeading1';         // Имя второго заголовка столбца канонической таблицы
+    const COLUMN_HEADING_TITLE = 'ColumnHeading';    // Имя третьего заголовка столбца канонической таблицы
 
-    public $data_entities = array();           // Массив найденных концептов для столбца с данными "DATA"
-    public $row_heading_entities = array();    // Массив найденных сущностей для столбца "RowHeading"
-    public $column_heading_entities = array(); // Массив найденных сущностей для столбца "ColumnHeading"
+    public $data_entities = array();                 // Массив найденных концептов для столбца с данными "DATA"
+    public $row_heading_entities = array();          // Массив найденных сущностей для столбца "RowHeading"
+    public $column_heading_entities = array();       // Массив найденных сущностей для столбца "ColumnHeading"
+    public $parent_data_classes = array();           // Массив родительских классов для концептов в "DATA"
+    public $parent_row_heading_classes = array();    // Массив родительских классов для сущностей в "RowHeading"
+    public $parent_column_heading_classes = array(); // Массив родительских классов для сущностей в "ColumnHeading"
 
     /**
      * Аннотирование столбцов "RowHeading" и "ColumnHeading" содержащих значения заголовков исходной таблицы.
@@ -68,6 +71,8 @@ class CanonicalTableAnnotator
                 if (isset($rows['result']) && $rows['result']['rows']) {
                     array_push($class_query_results, $rows);
                     $formed_entities[$fc_key] = 'http://dbpedia.org/ontology/' . $fc_value;
+                    // Определение возможных родительских классов для найденного класса
+                    $this->searchParentClasses($sparql_client, $formed_entities[$fc_key], $heading_title);
                 }
                 else {
                     // SPARQL-запрос к DBpedia resource для поиска концептов
@@ -79,6 +84,8 @@ class CanonicalTableAnnotator
                     if (isset($rows['result']) && $rows['result']['rows']) {
                         array_push($concept_query_results, $rows);
                         $formed_entities[$fc_key] = 'http://dbpedia.org/resource/' . $fc_value;
+                        // Определение возможных родительских классов для найденного концепта
+                        $this->searchParentClasses($sparql_client, $formed_entities[$fc_key], $heading_title);
                     }
                     else {
                         // Обход массива корректных знаечний столбцов для поиска свойств класса (отношений)
@@ -159,6 +166,8 @@ class CanonicalTableAnnotator
                 if (isset($rows['result']) && $rows['result']['rows']) {
                     array_push($concept_query_results, $rows);
                     $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
+                    // Определение возможных родительских классов для найденного концепта
+                    $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
                 } else
                     $this->data_entities[$key] = $key;
             }
@@ -168,16 +177,46 @@ class CanonicalTableAnnotator
     }
 
     /**
+     * Определение списка возможных родительских классов.
+     *
+     * @param $sparql_client - объект клиента подключения к DBpedia
+     * @param $entity - сущность (концепт или класс) для которой необходимо найти родительские классы
+     * @param $heading_title - название заголовка столбца канонической таблицы
+     */
+    public function searchParentClasses($sparql_client, $entity, $heading_title)
+    {
+        // SPARQL-запрос к DBpedia ontology для поиска родительских классов
+        $query = "SELECT <$entity> ?property ?object
+            FROM <http://dbpedia.org>
+            WHERE {
+                <$entity> ?property ?object
+                FILTER (strstarts(str(?object), 'http://dbpedia.org/ontology/'))
+            }
+            LIMIT 100";
+        $rows = $sparql_client->query($query, 'rows');
+        if (isset($rows['result']) && $rows['result']['rows']) {
+            if ($heading_title == self::DATA_TITLE)
+                $this->parent_data_classes[$entity] = $rows;
+            if ($heading_title == self::ROW_HEADING_TITLE)
+                $this->parent_row_heading_classes[$entity] = $rows;
+            if ($heading_title == self::COLUMN_HEADING_TITLE)
+                $this->parent_column_heading_classes[$entity] = $rows;
+        }
+    }
+
+    /**
      * Отображение сокращенного имени аннотированной сущности.
      *
      * @param $formed_entities - массив всех сформированных сущностей (аннотированных значениям в таблице)
+     * @param $formed_parent_entities - массив возможных родительских классов для аннотированных значений (сущностей)
      * @param $cell_label - исходное название ячейки таблицы
      * @param $string_array - массив значений (меток) заголовков в ячейке таблицы
      * @param $current_key - текущий ключ значения (метки) заголовка в ячейке таблицы
      * @param $current_value - текущее значение (метка) заголовка в ячейке таблицы
      * @return string - сформированное название ячейки таблицы
      */
-    public function displayAbbreviatedEntity($formed_entities, $cell_label, $string_array, $current_key, $current_value)
+    public function displayAbbreviatedEntity($formed_entities, $formed_parent_entities, $cell_label,
+                                             $string_array, $current_key, $current_value)
     {
         // Массив названий сегментов онтологии DBpedia
         $ontology_segment_name = [
@@ -192,18 +231,30 @@ class CanonicalTableAnnotator
             if ($current_value == $key) {
                 $abbreviated_concept = str_replace($ontology_segment_name,
                     $ontology_segment_prefix, $formed_entity, $count);
-                if ($current_key > 0 && $count == 0)
-                    $cell_label .= $current_value;
-                if ($current_key == 0 && count($string_array) == 1 && $count == 0)
-                    $cell_label = $current_value;
-                if ($current_key == 0 && count($string_array) > 1 && $count == 0)
-                    $cell_label = $current_value . ' | ';
-                if ($current_key > 0 && $count > 0)
-                    $cell_label .= $current_value . ' (' . $abbreviated_concept . ')';
-                if ($current_key == 0 && count($string_array) == 1 && $count > 0)
-                    $cell_label = $current_value . ' (' . $abbreviated_concept . ')';
-                if ($current_key == 0 && count($string_array) > 1 && $count > 0)
-                    $cell_label = $current_value . ' (' . $abbreviated_concept . ') | ';
+                if ($count == 0) {
+                    if ($current_key > 0)
+                        $cell_label .= $current_value;
+                    if ($current_key == 0 && count($string_array) == 1)
+                        $cell_label = $current_value;
+                    if ($current_key == 0 && count($string_array) > 1)
+                        $cell_label = $current_value . ' | ';
+                }
+                if ($count > 0) {
+                    foreach ($formed_parent_entities as $fpe_key => $formed_parent_entity)
+                        if ($formed_entity == $fpe_key) {
+                            $abbreviated_parent_concept = str_replace($ontology_segment_name,
+                                $ontology_segment_prefix, $formed_parent_entity['result']['rows'][0]['object']);
+                            if ($current_key > 0)
+                                $cell_label .= $current_value . ' (' . $abbreviated_concept . ' - ' .
+                                    $abbreviated_parent_concept . ')';
+                            if ($current_key == 0 && count($string_array) == 1)
+                                $cell_label = $current_value . ' (' . $abbreviated_concept . ' - ' .
+                                    $abbreviated_parent_concept . ')';
+                            if ($current_key == 0 && count($string_array) > 1)
+                                $cell_label = $current_value . ' (' . $abbreviated_concept . ' - ' .
+                                    $abbreviated_parent_concept . ') | ';
+                        }
+                }
             }
 
         return $cell_label;

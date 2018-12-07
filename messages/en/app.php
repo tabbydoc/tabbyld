@@ -76,6 +76,7 @@ return [
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Class query results for ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Concept query results for ColumnHeading',
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Property query results for ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY' => 'Parent classes for: ',
     /* Сообщения для страницы аннотирования таблиц */
     'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'You have successfully annotated canonical table!',
 

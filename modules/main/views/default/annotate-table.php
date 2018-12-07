@@ -18,6 +18,9 @@
 /* @var $all_column_heading_class_query_runtime app\modules\main\controllers\DefaultController */
 /* @var $all_column_heading_concept_query_runtime app\modules\main\controllers\DefaultController */
 /* @var $all_column_heading_property_query_runtime app\modules\main\controllers\DefaultController */
+/* @var $parent_data_classes app\modules\main\controllers\DefaultController */
+/* @var $parent_row_heading_classes app\modules\main\controllers\DefaultController */
+/* @var $parent_column_heading_classes app\modules\main\controllers\DefaultController */
 
 use yii\helpers\Html;
 use yii\bootstrap\Tabs;
@@ -67,7 +70,8 @@ $this->params['breadcrumbs'][] = $this->title;
                     'label' => Yii::t('app', 'TABLE_ANNOTATION_PAGE_DATA_RESULTS'),
                     'content' => $this->render('_data_results', [
                         'data_concept_query_results' => $data_concept_query_results,
-                        'all_data_concept_query_runtime' => $all_data_concept_query_runtime
+                        'all_data_concept_query_runtime' => $all_data_concept_query_runtime,
+                        'parent_data_classes' => $parent_data_classes
                     ]),
                 ],
                 [
@@ -78,7 +82,8 @@ $this->params['breadcrumbs'][] = $this->title;
                         'row_heading_property_query_results' => $row_heading_property_query_results,
                         'all_row_heading_class_query_runtime' => $all_row_heading_class_query_runtime,
                         'all_row_heading_concept_query_runtime' => $all_row_heading_concept_query_runtime,
-                        'all_row_heading_property_query_runtime' => $all_row_heading_property_query_runtime
+                        'all_row_heading_property_query_runtime' => $all_row_heading_property_query_runtime,
+                        'parent_row_heading_classes' => $parent_row_heading_classes
                     ]),
                 ],
                 [
@@ -89,7 +94,8 @@ $this->params['breadcrumbs'][] = $this->title;
                         'column_heading_property_query_results' => $column_heading_property_query_results,
                         'all_column_heading_class_query_runtime' => $all_column_heading_class_query_runtime,
                         'all_column_heading_concept_query_runtime' => $all_column_heading_concept_query_runtime,
-                        'all_column_heading_property_query_runtime' => $all_column_heading_property_query_runtime
+                        'all_column_heading_property_query_runtime' => $all_column_heading_property_query_runtime,
+                        'parent_column_heading_classes' => $parent_column_heading_classes
                     ]),
                 ]
             ]
