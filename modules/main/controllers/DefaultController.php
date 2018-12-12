@@ -128,13 +128,15 @@ class DefaultController extends Controller
     }
 
     /**
-     * Аннотирование таблицы.
+     * Аннотирование канонических таблицы.
      *
      * @return string
      */
     public function actionAnnotateTable()
     {
+        // Массив данных канонической таблицы
         $data = array();
+        // Массивы для результатов запросов (статистика поиска в DBpedia)
         $row_heading_class_query_results = array();
         $row_heading_concept_query_results = array();
         $row_heading_property_query_results = array();
@@ -149,9 +151,20 @@ class DefaultController extends Controller
         $all_column_heading_property_query_runtime = 0;
         $data_concept_query_results = array();
         $all_data_concept_query_runtime = 0;
+        // Массивы сущностей для аннотированных значений ячеек в таблице
+        $data_entities = array();
+        $row_heading_entities = array();
+        $column_heading_entities = array();
+        // Массивы кандидатов родительских классов для сущностей, аннотированных со значениями ячеек в таблице
+        $parent_data_class_candidates = array();
+        $parent_row_heading_class_candidates = array();
+        $parent_column_heading_class_candidates = array();
+        // Массивы определенных родительских классов для сущностей, аннотированных со значениями ячеек в таблице
         $parent_data_classes = array();
         $parent_row_heading_classes = array();
         $parent_column_heading_classes = array();
+        // Создание объекта аннотатора таблиц
+        $annotator = new CanonicalTableAnnotator();
         // Создание формы файла Excel
         $file_form = new ExcelFileForm();
         if (Yii::$app->request->isPost) {
@@ -163,8 +176,6 @@ class DefaultController extends Controller
                     'setIndexSheetByName' => true,
                     'getOnlySheet' => ExcelFileForm::SHEET_NAME,
                 ]);
-                // Создание объекта аннотатора таблиц
-                $annotator = new CanonicalTableAnnotator();
                 // Аннотирование столбца "DATA"
                 $data_concept_query_results = $annotator->annotateTableData($data);
                 // Аннотирование столбца "RowHeading"
@@ -175,47 +186,18 @@ class DefaultController extends Controller
                 list($column_heading_class_query_results, $column_heading_concept_query_results,
                     $column_heading_property_query_results) = $annotator
                         ->annotateTableHeading($data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
-                // Списки родительских классов для аннотированных сущностей
+                // Формирование массивов сущностей для аннотированных значений ячеек в таблице
+                $data_entities = $annotator->data_entities;
+                $row_heading_entities = $annotator->row_heading_entities;
+                $column_heading_entities = $annotator->column_heading_entities;
+                // Формирование массивов кандидатов родительских классов для аннотированных сущностей
+                $parent_data_class_candidates = $annotator->parent_data_class_candidates;
+                $parent_row_heading_class_candidates = $annotator->parent_row_heading_class_candidates;
+                $parent_column_heading_class_candidates = $annotator->parent_column_heading_class_candidates;
+                // Формирование массивов определенных родительских классов для аннотированных сущностей
                 $parent_data_classes = $annotator->parent_data_classes;
                 $parent_row_heading_classes = $annotator->parent_row_heading_classes;
                 $parent_column_heading_classes = $annotator->parent_column_heading_classes;
-                // Обход XSLX-данных
-                foreach ($data as $key => $item)
-                    foreach ($item as $heading => $value) {
-                        $string_array = explode(" | ", $value);
-                        foreach ($string_array as $str_key => $string) {
-                            // Обработка столбца "DATA"
-                            if ($heading == CanonicalTableAnnotator::DATA_TITLE)
-                                $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
-                                    $annotator->data_entities,
-                                    $annotator->parent_data_classes,
-                                    $data[$key][$heading],
-                                    $string_array,
-                                    $str_key,
-                                    $string
-                                );
-                            // Обработка столбца "RowHeading"
-                            if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE)
-                                $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
-                                    $annotator->row_heading_entities,
-                                    $annotator->parent_row_heading_classes,
-                                    $data[$key][$heading],
-                                    $string_array,
-                                    $str_key,
-                                    $string
-                                );
-                            // Обработка столбца "ColumnHeading"
-                            if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE)
-                                $data[$key][$heading] = $annotator->displayAbbreviatedEntity(
-                                    $annotator->column_heading_entities,
-                                    $annotator->parent_column_heading_classes,
-                                    $data[$key][$heading],
-                                    $string_array,
-                                    $str_key,
-                                    $string
-                                );
-                        }
-                    }
                 // Формирование итогового времени затраченного на поиск сущностей в DBpedia
                 foreach ($data_concept_query_results as $foo => $concept_query_result)
                     $all_data_concept_query_runtime += $concept_query_result['query_time'];
@@ -231,7 +213,6 @@ class DefaultController extends Controller
                     $all_column_heading_concept_query_runtime += $concept_query_result['query_time'];
                 foreach ($column_heading_property_query_results as $property_query_result)
                     $all_column_heading_property_query_runtime += $property_query_result['query_time'];
-
                 // Вывод сообщения об успешном аннотировании таблицы
                 Yii::$app->getSession()->setFlash('success', Yii::t('app', 'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE'));
             }
@@ -254,6 +235,12 @@ class DefaultController extends Controller
             'all_column_heading_class_query_runtime' => $all_column_heading_class_query_runtime,
             'all_column_heading_concept_query_runtime' => $all_column_heading_concept_query_runtime,
             'all_column_heading_property_query_runtime' => $all_column_heading_property_query_runtime,
+            'data_entities' => $data_entities,
+            'row_heading_entities' => $row_heading_entities,
+            'column_heading_entities' => $column_heading_entities,
+            'parent_data_class_candidates' => $parent_data_class_candidates,
+            'parent_row_heading_class_candidates' => $parent_row_heading_class_candidates,
+            'parent_column_heading_class_candidates' => $parent_column_heading_class_candidates,
             'parent_data_classes' => $parent_data_classes,
             'parent_row_heading_classes' => $parent_row_heading_classes,
             'parent_column_heading_classes' => $parent_column_heading_classes

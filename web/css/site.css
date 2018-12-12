@@ -105,6 +105,15 @@ a.desc:after {
     background: url(../images/languages.png) 0 -96px;
 }
 
+/* Modal form style */
+.modal-form-text {
+    margin: 0;
+    font-size: 16px
+}
+.form-check-label {
+    margin-left: 1%;
+}
+
 /* align the logout "link" (button in form) of the navbar */
 .nav li > form > button.logout {
     padding: 15px;

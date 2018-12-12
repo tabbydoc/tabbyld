@@ -2,6 +2,7 @@
 
 namespace app\components;
 
+use yii\bootstrap\Html;
 use BorderCloud\SPARQL\SparqlClient;
 
 /**
@@ -11,16 +12,25 @@ use BorderCloud\SPARQL\SparqlClient;
  */
 class CanonicalTableAnnotator
 {
-    const DATA_TITLE = 'DATA';                       // Имя первого заголовка столбца канонической таблицы
-    const ROW_HEADING_TITLE = 'RowHeading1';         // Имя второго заголовка столбца канонической таблицы
-    const COLUMN_HEADING_TITLE = 'ColumnHeading';    // Имя третьего заголовка столбца канонической таблицы
+    const DATA_TITLE = 'DATA';                    // Имя первого заголовка столбца канонической таблицы
+    const ROW_HEADING_TITLE = 'RowHeading1';      // Имя второго заголовка столбца канонической таблицы
+    const COLUMN_HEADING_TITLE = 'ColumnHeading'; // Имя третьего заголовка столбца канонической таблицы
 
-    public $data_entities = array();                 // Массив найденных концептов для столбца с данными "DATA"
-    public $row_heading_entities = array();          // Массив найденных сущностей для столбца "RowHeading"
-    public $column_heading_entities = array();       // Массив найденных сущностей для столбца "ColumnHeading"
-    public $parent_data_classes = array();           // Массив родительских классов для концептов в "DATA"
-    public $parent_row_heading_classes = array();    // Массив родительских классов для сущностей в "RowHeading"
-    public $parent_column_heading_classes = array(); // Массив родительских классов для сущностей в "ColumnHeading"
+    public $data_entities = array();              // Массив найденных концептов для столбца с данными "DATA"
+    public $row_heading_entities = array();       // Массив найденных сущностей для столбца "RowHeading"
+    public $column_heading_entities = array();    // Массив найденных сущностей для столбца "ColumnHeading"
+    // Массив кандидатов родительских классов для концептов в "DATA"
+    public $parent_data_class_candidates = array();
+    // Массив кандидатов родительских классов для сущностей в "RowHeading"
+    public $parent_row_heading_class_candidates = array();
+    // Массив кандидатов родительских классов для сущностей в "ColumnHeading"
+    public $parent_column_heading_class_candidates = array();
+    // Массив с определенными родительскими классами для концептов в "DATA"
+    public $parent_data_classes = array();
+    // Массив с определенными родительскими классами для сущностей в "RowHeading"
+    public $parent_row_heading_classes = array();
+    // Массив сс определенными родительскими классами для сущностей в "ColumnHeading"
+    public $parent_column_heading_classes = array();
 
     /**
      * Аннотирование столбцов "RowHeading" и "ColumnHeading" содержащих значения заголовков исходной таблицы.
@@ -111,8 +121,7 @@ class CanonicalTableAnnotator
                                     if (isset($rows['result']) && $rows['result']['rows']) {
                                         array_push($property_query_results, $rows);
                                         $formed_entities[$fp_key] = 'http://dbpedia.org/property/' . $fp_value;
-                                    } else
-                                        $formed_entities[$fp_key] = $fp_key;
+                                    }
                                 }
                             }
                         }
@@ -168,8 +177,7 @@ class CanonicalTableAnnotator
                     $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
                     // Определение возможных родительских классов для найденного концепта
                     $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
-                } else
-                    $this->data_entities[$key] = $key;
+                }
             }
         }
 
@@ -177,7 +185,7 @@ class CanonicalTableAnnotator
     }
 
     /**
-     * Определение списка возможных родительских классов.
+     * Определение списка кадидатов родительских классов и определение родительского класса из списка по умолчанию.
      *
      * @param $sparql_client - объект клиента подключения к DBpedia
      * @param $entity - сущность (концепт или класс) для которой необходимо найти родительские классы
@@ -195,12 +203,18 @@ class CanonicalTableAnnotator
             LIMIT 100";
         $rows = $sparql_client->query($query, 'rows');
         if (isset($rows['result']) && $rows['result']['rows']) {
-            if ($heading_title == self::DATA_TITLE)
-                $this->parent_data_classes[$entity] = $rows;
-            if ($heading_title == self::ROW_HEADING_TITLE)
-                $this->parent_row_heading_classes[$entity] = $rows;
-            if ($heading_title == self::COLUMN_HEADING_TITLE)
-                $this->parent_column_heading_classes[$entity] = $rows;
+            if ($heading_title == self::DATA_TITLE) {
+                $this->parent_data_class_candidates[$entity] = $rows;
+                $this->parent_data_classes[$entity] = $rows['result']['rows'][0]['object'];
+            }
+            if ($heading_title == self::ROW_HEADING_TITLE) {
+                $this->parent_row_heading_class_candidates[$entity] = $rows;
+                $this->parent_row_heading_classes[$entity] = $rows['result']['rows'][0]['object'];
+            }
+            if ($heading_title == self::COLUMN_HEADING_TITLE) {
+                $this->parent_column_heading_class_candidates[$entity] = $rows;
+                $this->parent_column_heading_classes[$entity] = $rows['result']['rows'][0]['object'];
+            }
         }
     }
 
@@ -208,7 +222,7 @@ class CanonicalTableAnnotator
      * Отображение сокращенного имени аннотированной сущности.
      *
      * @param $formed_entities - массив всех сформированных сущностей (аннотированных значениям в таблице)
-     * @param $formed_parent_entities - массив возможных родительских классов для аннотированных значений (сущностей)
+     * @param $formed_parent_entities - массив определенных родительских классов для аннотированных значений (сущностей)
      * @param $cell_label - исходное название ячейки таблицы
      * @param $string_array - массив значений (меток) заголовков в ячейке таблицы
      * @param $current_key - текущий ключ значения (метки) заголовка в ячейке таблицы
@@ -243,16 +257,24 @@ class CanonicalTableAnnotator
                     foreach ($formed_parent_entities as $fpe_key => $formed_parent_entity)
                         if ($formed_entity == $fpe_key) {
                             $abbreviated_parent_concept = str_replace($ontology_segment_name,
-                                $ontology_segment_prefix, $formed_parent_entity['result']['rows'][0]['object']);
+                                $ontology_segment_prefix, $formed_parent_entity);
+                            $link = Html::a($abbreviated_parent_concept, ['#'],
+                                [
+                                    'class' => $formed_entity,
+                                    'title' => $abbreviated_parent_concept,
+                                    'data-toggle'=>'modal',
+                                    'data-target'=>'#selectParentClassModalForm'
+                                ]
+                            );
                             if ($current_key > 0)
                                 $cell_label .= $current_value . ' (' . $abbreviated_concept . ' - ' .
-                                    $abbreviated_parent_concept . ')';
+                                    $link . ')';
                             if ($current_key == 0 && count($string_array) == 1)
                                 $cell_label = $current_value . ' (' . $abbreviated_concept . ' - ' .
-                                    $abbreviated_parent_concept . ')';
+                                    $link . ')';
                             if ($current_key == 0 && count($string_array) > 1)
                                 $cell_label = $current_value . ' (' . $abbreviated_concept . ' - ' .
-                                    $abbreviated_parent_concept . ') | ';
+                                    $link . ') | ';
                         }
                 }
             }

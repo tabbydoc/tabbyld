@@ -79,6 +79,9 @@ return [
     'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY' => 'Parent classes for: ',
     /* Сообщения для страницы аннотирования таблиц */
     'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'You have successfully annotated canonical table!',
+    /* Страница модального окна для аннотирования таблиц */
+    'TABLE_ANNOTATION_PAGE_SELECT_PARENT_CLASS' => 'Select parent class',
+    'TABLE_ANNOTATION_PAGE_MODAL_FORM_TEXT' => 'Select parent class from the following candidates:',
 
     /* Формы */
     /* ContactForm */
