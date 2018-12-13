@@ -204,15 +204,15 @@ class CanonicalTableAnnotator
         $rows = $sparql_client->query($query, 'rows');
         if (isset($rows['result']) && $rows['result']['rows']) {
             if ($heading_title == self::DATA_TITLE) {
-                $this->parent_data_class_candidates[$entity] = $rows;
+                $this->parent_data_class_candidates[$entity] = $rows['result']['rows'];
                 $this->parent_data_classes[$entity] = $rows['result']['rows'][0]['object'];
             }
             if ($heading_title == self::ROW_HEADING_TITLE) {
-                $this->parent_row_heading_class_candidates[$entity] = $rows;
+                $this->parent_row_heading_class_candidates[$entity] = $rows['result']['rows'];
                 $this->parent_row_heading_classes[$entity] = $rows['result']['rows'][0]['object'];
             }
             if ($heading_title == self::COLUMN_HEADING_TITLE) {
-                $this->parent_column_heading_class_candidates[$entity] = $rows;
+                $this->parent_column_heading_class_candidates[$entity] = $rows['result']['rows'];
                 $this->parent_column_heading_classes[$entity] = $rows['result']['rows'][0]['object'];
             }
         }

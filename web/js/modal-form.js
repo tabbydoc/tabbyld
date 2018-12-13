@@ -8,7 +8,7 @@ function createRadioInputs(current_selected_entity, parent_class_candidates, par
     $.each(parent_class_candidates, function (entity_name, parent_data_class_candidate) {
         if (entity_name == current_selected_entity) {
             var count = 1;
-            $.each(parent_data_class_candidate["result"]["rows"], function (id, item) {
+            $.each(parent_data_class_candidate, function (id, item) {
                 // Создание слоя переключателя
                 var html_div = document.createElement("div");
                 html_div.className = "form-check";

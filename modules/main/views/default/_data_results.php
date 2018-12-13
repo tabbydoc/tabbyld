@@ -26,25 +26,23 @@
 <?php endif; ?>
 
 <?php if($parent_data_class_candidates): ?>
-    <?php foreach($parent_data_class_candidates as $parent_data_class_candidate): ?>
+    <?php foreach($parent_data_class_candidates as $concept => $parent_data_class_candidate): ?>
         <h2><?= Yii::t('app', 'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY'); ?>
-            <a href="<?= $parent_data_class_candidate['result']['rows'][0]['callret-0']; ?>">
-                <?= $parent_data_class_candidate['result']['rows'][0]['callret-0']; ?>
-            </a>
+            <a href="<?= $concept; ?>"><?= $concept; ?></a>
         </h2>
         <table class="table table-striped table-bordered">
-        <tr>
-            <td><b>Concept</b></td>
-            <td><b>Property</b></td>
-            <td><b>Class</b></td>
-        </tr>
-        <?php foreach($parent_data_class_candidate['result']['rows'] as $row): ?>
             <tr>
-                <?php foreach($parent_data_class_candidate['result']['variables'] as $variable): ?>
-                    <td><?= $row[$variable]; ?></td>
-                <?php endforeach; ?>
+                <td><b>Concept</b></td>
+                <td><b>Property</b></td>
+                <td><b>Class</b></td>
             </tr>
-        <?php endforeach; ?>
+            <?php foreach($parent_data_class_candidate as $row): ?>
+                <tr>
+                    <td><?= $row['callret-0']; ?></td>
+                    <td><?= $row['property']; ?></td>
+                    <td><?= $row['object']; ?></td>
+                </tr>
+            <?php endforeach; ?>
         </table>
     <?php endforeach; ?>
 <?php endif; ?>
