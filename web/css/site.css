@@ -105,6 +105,11 @@ a.desc:after {
     background: url(../images/languages.png) 0 -96px;
 }
 
+/* Resulting table page */
+form#export-file-form {
+    margin-top: 1%;
+}
+
 /* Modal form style */
 .modal-form-text {
     margin: 0;

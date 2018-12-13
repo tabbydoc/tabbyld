@@ -27,7 +27,7 @@ use yii\widgets\ActiveForm;
     ]); ?>
 
         <br/>
-        <?= Html::Button(Yii::t('app', 'BUTTON_SAVE'), ['class' => 'btn btn-success save-parent-class-button']) ?>
+        <?= Html::Button(Yii::t('app', 'BUTTON_SAVE'), ['class' => 'btn btn-success save-parent-class-button']); ?>
 
         <?= Button::widget([
             'label' => Yii::t('app', 'BUTTON_CANCEL'),

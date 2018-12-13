@@ -134,37 +134,6 @@ class DefaultController extends Controller
      */
     public function actionAnnotateTable()
     {
-        // Массив данных канонической таблицы
-        $data = array();
-        // Массивы для результатов запросов (статистика поиска в DBpedia)
-        $row_heading_class_query_results = array();
-        $row_heading_concept_query_results = array();
-        $row_heading_property_query_results = array();
-        $all_row_heading_class_query_runtime = 0;
-        $all_row_heading_concept_query_runtime = 0;
-        $all_row_heading_property_query_runtime = 0;
-        $column_heading_class_query_results = array();
-        $column_heading_concept_query_results = array();
-        $column_heading_property_query_results = array();
-        $all_column_heading_class_query_runtime = 0;
-        $all_column_heading_concept_query_runtime = 0;
-        $all_column_heading_property_query_runtime = 0;
-        $data_concept_query_results = array();
-        $all_data_concept_query_runtime = 0;
-        // Массивы сущностей для аннотированных значений ячеек в таблице
-        $data_entities = array();
-        $row_heading_entities = array();
-        $column_heading_entities = array();
-        // Массивы кандидатов родительских классов для сущностей, аннотированных со значениями ячеек в таблице
-        $parent_data_class_candidates = array();
-        $parent_row_heading_class_candidates = array();
-        $parent_column_heading_class_candidates = array();
-        // Массивы определенных родительских классов для сущностей, аннотированных со значениями ячеек в таблице
-        $parent_data_classes = array();
-        $parent_row_heading_classes = array();
-        $parent_column_heading_classes = array();
-        // Создание объекта аннотатора таблиц
-        $annotator = new CanonicalTableAnnotator();
         // Создание формы файла Excel
         $file_form = new ExcelFileForm();
         if (Yii::$app->request->isPost) {
@@ -176,6 +145,8 @@ class DefaultController extends Controller
                     'setIndexSheetByName' => true,
                     'getOnlySheet' => ExcelFileForm::SHEET_NAME,
                 ]);
+                // Создание объекта аннотатора таблиц
+                $annotator = new CanonicalTableAnnotator();
                 // Аннотирование столбца "DATA"
                 $data_concept_query_results = $annotator->annotateTableData($data);
                 // Аннотирование столбца "RowHeading"
@@ -199,6 +170,13 @@ class DefaultController extends Controller
                 $parent_row_heading_classes = $annotator->parent_row_heading_classes;
                 $parent_column_heading_classes = $annotator->parent_column_heading_classes;
                 // Формирование итогового времени затраченного на поиск сущностей в DBpedia
+                $all_data_concept_query_runtime = 0;
+                $all_row_heading_class_query_runtime = 0;
+                $all_row_heading_concept_query_runtime = 0;
+                $all_row_heading_property_query_runtime = 0;
+                $all_column_heading_class_query_runtime = 0;
+                $all_column_heading_concept_query_runtime = 0;
+                $all_column_heading_property_query_runtime = 0;
                 foreach ($data_concept_query_results as $foo => $concept_query_result)
                     $all_data_concept_query_runtime += $concept_query_result['query_time'];
                 foreach ($row_heading_class_query_results as $class_query_result)
@@ -213,13 +191,109 @@ class DefaultController extends Controller
                     $all_column_heading_concept_query_runtime += $concept_query_result['query_time'];
                 foreach ($column_heading_property_query_results as $property_query_result)
                     $all_column_heading_property_query_runtime += $property_query_result['query_time'];
-                // Вывод сообщения об успешном аннотировании таблицы
-                Yii::$app->getSession()->setFlash('success', Yii::t('app', 'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE'));
+
+                // Check if the Session is Open, and Open it if it isn't Open already
+                if (!Yii::$app->session->getIsActive()) {
+                    Yii::$app->session->open();
+                }
+                Yii::$app->session['data'] = $data;
+                Yii::$app->session['data_concept_query_results'] = $data_concept_query_results;
+                Yii::$app->session['row_heading_class_query_results'] = $row_heading_class_query_results;
+                Yii::$app->session['row_heading_property_query_results'] = $row_heading_property_query_results;
+                Yii::$app->session['row_heading_concept_query_results'] = $row_heading_concept_query_results;
+                Yii::$app->session['column_heading_class_query_results'] = $column_heading_class_query_results;
+                Yii::$app->session['column_heading_concept_query_results'] = $column_heading_concept_query_results;
+                Yii::$app->session['column_heading_property_query_results'] = $column_heading_property_query_results;
+                Yii::$app->session['all_data_concept_query_runtime'] = $all_data_concept_query_runtime;
+                Yii::$app->session['all_row_heading_class_query_runtime'] = $all_row_heading_class_query_runtime;
+                Yii::$app->session['all_row_heading_concept_query_runtime'] = $all_row_heading_concept_query_runtime;
+                Yii::$app->session['all_row_heading_property_query_runtime'] = $all_row_heading_property_query_runtime;
+                Yii::$app->session['all_column_heading_class_query_runtime'] = $all_column_heading_class_query_runtime;
+                Yii::$app->session['all_column_heading_concept_query_runtime'] =
+                    $all_column_heading_concept_query_runtime;
+                Yii::$app->session['all_column_heading_property_query_runtime'] =
+                    $all_column_heading_property_query_runtime;
+                Yii::$app->session['data_entities'] = $data_entities;
+                Yii::$app->session['row_heading_entities'] = $row_heading_entities;
+                Yii::$app->session['column_heading_entities'] = $column_heading_entities;
+                Yii::$app->session['parent_data_class_candidates'] = $parent_data_class_candidates;
+                Yii::$app->session['parent_row_heading_class_candidates'] = $parent_row_heading_class_candidates;
+                Yii::$app->session['parent_column_heading_class_candidates'] = $parent_column_heading_class_candidates;
+                Yii::$app->session['parent_data_classes'] = $parent_data_classes;
+                Yii::$app->session['parent_row_heading_classes'] = $parent_row_heading_classes;
+                Yii::$app->session['parent_column_heading_classes'] = $parent_column_heading_classes;
+                Yii::$app->session->close();
+
+                return $this->redirect(['resulting-table']);
             }
         }
 
         return $this->render('annotate-table', [
-            'file_form' => $file_form,
+            'file_form' => $file_form
+        ]);
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function actionResultingTable()
+    {
+        if (isset(Yii::$app->session['data'])) {
+            $data = Yii::$app->session['data'];
+            $data_concept_query_results = Yii::$app->session['data_concept_query_results'];
+            $row_heading_class_query_results = Yii::$app->session['row_heading_class_query_results'];
+            $row_heading_property_query_results = Yii::$app->session['row_heading_property_query_results'];
+            $row_heading_concept_query_results = Yii::$app->session['row_heading_concept_query_results'];
+            $column_heading_class_query_results = Yii::$app->session['column_heading_class_query_results'];
+            $column_heading_concept_query_results = Yii::$app->session['column_heading_concept_query_results'];
+            $column_heading_property_query_results = Yii::$app->session['column_heading_property_query_results'];
+            $all_data_concept_query_runtime = Yii::$app->session['all_data_concept_query_runtime'];
+            $all_row_heading_class_query_runtime = Yii::$app->session['all_row_heading_class_query_runtime'];
+            $all_row_heading_concept_query_runtime = Yii::$app->session['all_row_heading_concept_query_runtime'];
+            $all_row_heading_property_query_runtime = Yii::$app->session['all_row_heading_property_query_runtime'];
+            $all_column_heading_class_query_runtime = Yii::$app->session['all_column_heading_class_query_runtime'];
+            $all_column_heading_concept_query_runtime = Yii::$app->session['all_column_heading_concept_query_runtime'];
+            $all_column_heading_property_query_runtime = Yii::$app->session['all_column_heading_property_query_runtime'];
+            $data_entities = Yii::$app->session['data_entities'];
+            $row_heading_entities = Yii::$app->session['row_heading_entities'];
+            $column_heading_entities = Yii::$app->session['column_heading_entities'];
+            $parent_data_class_candidates = Yii::$app->session['parent_data_class_candidates'];
+            $parent_row_heading_class_candidates = Yii::$app->session['parent_row_heading_class_candidates'];
+            $parent_column_heading_class_candidates = Yii::$app->session['parent_column_heading_class_candidates'];
+            $parent_data_classes = Yii::$app->session['parent_data_classes'];
+            $parent_row_heading_classes = Yii::$app->session['parent_row_heading_classes'];
+            $parent_column_heading_classes = Yii::$app->session['parent_column_heading_classes'];
+            // Вывод сообщения об успешном аннотировании таблицы
+            Yii::$app->getSession()->setFlash('success', Yii::t('app', 'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE'));
+        } else {
+            $data = null;
+            $data_concept_query_results = null;
+            $row_heading_class_query_results = null;
+            $row_heading_property_query_results = null;
+            $row_heading_concept_query_results = null;
+            $column_heading_class_query_results = null;
+            $column_heading_concept_query_results = null;
+            $column_heading_property_query_results = null;
+            $all_data_concept_query_runtime = null;
+            $all_row_heading_class_query_runtime = null;
+            $all_row_heading_concept_query_runtime = null;
+            $all_row_heading_property_query_runtime = null;
+            $all_column_heading_class_query_runtime = null;
+            $all_column_heading_concept_query_runtime = null;
+            $all_column_heading_property_query_runtime = null;
+            $data_entities = null;
+            $row_heading_entities = null;
+            $column_heading_entities = null;
+            $parent_data_class_candidates = null;
+            $parent_row_heading_class_candidates = null;
+            $parent_column_heading_class_candidates = null;
+            $parent_data_classes = null;
+            $parent_row_heading_classes = null;
+            $parent_column_heading_classes = null;
+        }
+
+        return $this->render('resulting-table', [
             'data' => $data,
             'data_concept_query_results' => $data_concept_query_results,
             'row_heading_class_query_results' => $row_heading_class_query_results,

@@ -38,8 +38,10 @@ AppAsset::register($this);
     ]);
     echo Nav::widget([
         'options' => ['class' => 'navbar-nav navbar-left'],
+        'encodeLabels' => false,
         'items' => [
-            ['label' => Yii::t('app', 'NAV_TABLE_ANNOTATION'), 'url' => ['/main/default/annotate-table']]
+            ['label' => '<span class="glyphicon glyphicon-edit"></span> ' .
+                Yii::t('app', 'NAV_TABLE_ANNOTATION'), 'url' => ['/main/default/annotate-table']]
         ],
     ]);
     echo "<form class='navbar-form navbar-right'>" . WLang::widget() . "</form>";
@@ -47,14 +49,17 @@ AppAsset::register($this);
         'options' => ['class' => 'navbar-nav navbar-right'],
         'encodeLabels' => false,
         'items' => array_filter([
-            ['label' => Yii::t('app', 'NAV_CONTACT_US'), 'url' => ['/main/default/contact']],
+            ['label' => '<span class="glyphicon glyphicon-envelope"></span> ' .
+                Yii::t('app', 'NAV_CONTACT_US'), 'url' => ['/main/default/contact']],
             Yii::$app->user->isGuest ? (
-            ['label' => Yii::t('app', 'NAV_SIGN_IN'), 'url' => ['/main/default/sing-in']]
+            ['label' => '<span class="glyphicon glyphicon-log-in"></span> ' . Yii::t('app', 'NAV_SIGN_IN'),
+                'url' => ['/main/default/sing-in']]
             ) : (
                 '<li>'
                 . Html::beginForm(['/main/default/logout'], 'post')
                 . Html::submitButton(
-                    Yii::t('app', 'NAV_SIGN_OUT') . ' (' . Yii::$app->user->identity->username . ')',
+                    '<span class="glyphicon glyphicon-log-out"></span> ' . Yii::t('app', 'NAV_SIGN_OUT') .
+                        ' (' . Yii::$app->user->identity->username . ')',
                     ['class' => 'btn btn-link logout']
                 )
                 . Html::endForm()

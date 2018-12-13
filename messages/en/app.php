@@ -34,6 +34,8 @@ return [
     'BUTTON_EXPORT' => 'Export',
     'BUTTON_GENERATE' => 'Generate',
     'BUTTON_RETURN' => 'Return to',
+    'BUTTON_EXPORT_EXCEL_FILE' => 'Export Excel',
+    'BUTTON_EXPORT_RDF_FILE' => 'Export RDF',
 
     /* Общие сообщения об ошибках */
     'ERROR_MESSAGE_PAGE_NOT_FOUND' => 'Page not found.',

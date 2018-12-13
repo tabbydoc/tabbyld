@@ -2,6 +2,8 @@
 
 /* @var $data app\modules\main\controllers\DefaultController */
 
+use yii\bootstrap\Html;
+use yii\bootstrap\ActiveForm;
 use app\components\CanonicalTableAnnotator;
 
 ?>
@@ -141,6 +143,23 @@ use app\components\CanonicalTableAnnotator;
         });
     });
 </script>
+
+<?php $form = ActiveForm::begin([
+    'id'=>'export-file-form'
+]); ?>
+
+    <?= Html::Button('<span class="glyphicon glyphicon-download-alt"></span> ' .
+        Yii::t('app', 'BUTTON_EXPORT_EXCEL_FILE'), [
+            'class' => 'btn btn-success save-parent-class-button'
+    ]); ?>
+
+    <?= Html::Button('<span class="glyphicon glyphicon-download-alt"></span> ' .
+        Yii::t('app', 'BUTTON_EXPORT_RDF_FILE'), [
+            'class' => 'btn btn-success save-parent-class-button',
+            'style' => 'margin:5px'
+    ]); ?>
+
+<?php ActiveForm::end(); ?>
 
 <h2><?= Yii::t('app', 'TABLE_ANNOTATION_PAGE_RESULTING_TABLE') ?></h2>
 
