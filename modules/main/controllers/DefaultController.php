@@ -177,7 +177,7 @@ class DefaultController extends Controller
                 $all_column_heading_class_query_runtime = 0;
                 $all_column_heading_concept_query_runtime = 0;
                 $all_column_heading_property_query_runtime = 0;
-                foreach ($data_concept_query_results as $foo => $concept_query_result)
+                foreach ($data_concept_query_results as $concept_query_result)
                     $all_data_concept_query_runtime += $concept_query_result['query_time'];
                 foreach ($row_heading_class_query_results as $class_query_result)
                     $all_row_heading_class_query_runtime += $class_query_result['query_time'];

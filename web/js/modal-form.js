@@ -18,10 +18,10 @@ function createRadioInputs(current_selected_entity, parent_class_candidates, par
                 radio_input.id = "radio" + count;
                 radio_input.setAttribute("type", "radio");
                 radio_input.setAttribute("name", "parent-class-radio");
-                radio_input.setAttribute("value", item["object"]);
+                radio_input.setAttribute("value", item[0]);
                 // Цикл по массиву определенных родительских классов
                 $.each(parent_classes, function (index, parent_class) {
-                    if (index == entity_name && parent_class == item["object"])
+                    if (index == entity_name && parent_class == item[0])
                         radio_input.checked = true; // Выбор текущего родительского класса
                 });
                 // Добавление переключателя на слой
@@ -30,7 +30,7 @@ function createRadioInputs(current_selected_entity, parent_class_candidates, par
                 var html_label = document.createElement("label");
                 html_label.className = "form-check-label";
                 html_label.setAttribute("for", "radio" + count);
-                html_label.innerHTML = "&lt;" + item["object"] + "&gt;";
+                html_label.innerHTML = "&lt;" + item[0] + "&gt; (" + item[1] + ")";
                 // Добавление метки переключателя на слой
                 html_div.appendChild(html_label);
                 // Добавление слоя с переключателем на форму модального окна

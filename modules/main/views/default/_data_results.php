@@ -32,15 +32,13 @@
         </h2>
         <table class="table table-striped table-bordered">
             <tr>
-                <td><b>Concept</b></td>
-                <td><b>Property</b></td>
-                <td><b>Class</b></td>
+                <td><b>class</b></td>
+                <td><b>rank</b></td>
             </tr>
             <?php foreach($parent_data_class_candidate as $row): ?>
                 <tr>
-                    <td><?= $row['callret-0']; ?></td>
-                    <td><?= $row['property']; ?></td>
-                    <td><?= $row['object']; ?></td>
+                    <td><?= $row[0]; ?></td>
+                    <td><?= $row[1]; ?></td>
                 </tr>
             <?php endforeach; ?>
         </table>

@@ -204,18 +204,72 @@ class CanonicalTableAnnotator
         $rows = $sparql_client->query($query, 'rows');
         if (isset($rows['result']) && $rows['result']['rows']) {
             if ($heading_title == self::DATA_TITLE) {
-                $this->parent_data_class_candidates[$entity] = $rows['result']['rows'];
-                $this->parent_data_classes[$entity] = $rows['result']['rows'][0]['object'];
+                $this->parent_data_class_candidates[$entity] =
+                    self::rankingParentClassCandidates($sparql_client, $rows['result']['rows']);
+                $this->parent_data_classes[$entity] = $this->parent_data_class_candidates[$entity][0][0];
             }
             if ($heading_title == self::ROW_HEADING_TITLE) {
-                $this->parent_row_heading_class_candidates[$entity] = $rows['result']['rows'];
-                $this->parent_row_heading_classes[$entity] = $rows['result']['rows'][0]['object'];
+                $this->parent_row_heading_class_candidates[$entity] =
+                    self::rankingParentClassCandidates($sparql_client, $rows['result']['rows']);
+                $this->parent_row_heading_classes[$entity] = $this->parent_row_heading_class_candidates[$entity][0][0];
             }
             if ($heading_title == self::COLUMN_HEADING_TITLE) {
-                $this->parent_column_heading_class_candidates[$entity] = $rows['result']['rows'];
-                $this->parent_column_heading_classes[$entity] = $rows['result']['rows'][0]['object'];
+                $this->parent_column_heading_class_candidates[$entity] =
+                    self::rankingParentClassCandidates($sparql_client, $rows['result']['rows']);
+                $this->parent_column_heading_classes[$entity] =
+                    $this->parent_column_heading_class_candidates[$entity][0][0];
             }
         }
+    }
+
+    /**
+     * Ранжирование списка кадидатов родительских классов.
+     *
+     * @param $sparql_client - объект клиента подключения к DBpedia
+     * @param $parent_class_candidates - массив кадидатов родительских классов
+     * @return array - массив ранжированных кадидатов родительских классов
+     */
+    public function rankingParentClassCandidates($sparql_client, $parent_class_candidates)
+    {
+        // Массив для ранжированных кандидатов родительских классов
+        $ranked_parent_class_candidates = array();
+        // Цикл по кандидатам родительских классов
+        foreach($parent_class_candidates as $parent_data_class_candidate) {
+            $parent_class = $parent_data_class_candidate['object'];
+            // SPARQL-запрос к DBpedia для поиска эквивалентных классов
+            $query = "SELECT ?class
+                FROM <http://dbpedia.org>
+                WHERE {
+                    ?class owl:equivalentClass <$parent_class>
+                    FILTER (strstarts(str(?class), 'http://dbpedia.org/ontology/'))
+                }
+                LIMIT 100";
+            $rows = $sparql_client->query($query, 'rows');
+            // Запоминание эквивалентного класса, если он был найден
+            if (isset($rows['result']) && $rows['result']['rows'])
+                $parent_class = $rows['result']['rows'][0]['class'];
+            // SPARQL-запрос к DBpedia для определения кол-ва потомков данного класса до глобального класса owl:Thing
+            $query = "SELECT COUNT(*) as ?Triples
+                FROM <http://dbpedia.org>
+                WHERE {
+                    <$parent_class> rdfs:subClassOf+ ?class
+                }
+                LIMIT 100";
+            $rows = $sparql_client->query($query, 'rows');
+            // Добавление ранжированного кандидата родительского класса в массив
+            array_push($ranked_parent_class_candidates,
+                [$parent_data_class_candidate['object'], $rows['result']['rows'][0]['Triples']]);
+        }
+        // Сортировка массива ранжированных кандидатов родительских классов по убыванию их ранга
+        for ($i = 0; $i < count($ranked_parent_class_candidates); $i++)
+            for ($j = $i + 1; $j < count($ranked_parent_class_candidates); $j++)
+                if ($ranked_parent_class_candidates[$i][1] <= $ranked_parent_class_candidates[$j][1]) {
+                    $temp = $ranked_parent_class_candidates[$j];
+                    $ranked_parent_class_candidates[$j] = $ranked_parent_class_candidates[$i];
+                    $ranked_parent_class_candidates[$i] = $temp;
+                }
+
+        return $ranked_parent_class_candidates;
     }
 
     /**
