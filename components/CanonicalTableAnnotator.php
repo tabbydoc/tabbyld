@@ -12,9 +12,10 @@ use BorderCloud\SPARQL\SparqlClient;
  */
 class CanonicalTableAnnotator
 {
-    const DATA_TITLE = 'DATA';                    // Имя первого заголовка столбца канонической таблицы
-    const ROW_HEADING_TITLE = 'RowHeading1';      // Имя второго заголовка столбца канонической таблицы
-    const COLUMN_HEADING_TITLE = 'ColumnHeading'; // Имя третьего заголовка столбца канонической таблицы
+    const ENDPOINT_NAME = 'http://dbpedia.org/sparql'; // Название точки доступа SPARQL
+    const DATA_TITLE = 'DATA';                         // Имя первого заголовка столбца канонической таблицы
+    const ROW_HEADING_TITLE = 'RowHeading1';           // Имя второго заголовка столбца канонической таблицы
+    const COLUMN_HEADING_TITLE = 'ColumnHeading';      // Имя третьего заголовка столбца канонической таблицы
 
     public $data_entities = array();              // Массив найденных концептов для столбца с данными "DATA"
     public $row_heading_entities = array();       // Массив найденных сущностей для столбца "RowHeading"
@@ -43,10 +44,6 @@ class CanonicalTableAnnotator
     {
         $formed_concepts = array();
         $formed_properties = array();
-        $formed_entities = array();
-        $class_query_results = array();
-        $concept_query_results = array();
-        $property_query_results = array();
         // Формирование массивов неповторяющихся корректных значений столбцов для поиска концептов и свойств в отнологии
         foreach ($data as $item)
             foreach ($item as $heading => $value)
@@ -63,65 +60,72 @@ class CanonicalTableAnnotator
                         $formed_properties[$string] = $correct_string;
                     }
                 }
-        // Подключение к DBpedia
-        $endpoint = 'http://dbpedia.org/sparql';
-        $sparql_client = new SparqlClient();
-        $sparql_client->setEndpointRead($endpoint);
-        $error = $sparql_client->getErrors();
-        // Если нет ошибок при подключении
-        if (!$error) {
-            // Обход массива корректных значений столбцов для поиска классов и концептов
-            foreach ($formed_concepts as $fc_key => $fc_value) {
-                // SPARQL-запрос к DBpedia ontology для поиска классов
-                $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
-                    SELECT dbo:$fc_value ?property ?object
-                    WHERE { dbo:$fc_value ?property ?object }
+        $formed_entities = array();
+        $class_query_results = array();
+        $concept_query_results = array();
+        $property_query_results = array();
+        // Обход массива корректных значений столбцов для поиска классов и концептов
+        foreach ($formed_concepts as $fc_key => $fc_value) {
+            // Подключение к DBpedia
+            $sparql_client = new SparqlClient();
+            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+            // SPARQL-запрос к DBpedia ontology для поиска классов
+            $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+                SELECT dbo:$fc_value ?property ?object
+                WHERE { dbo:$fc_value ?property ?object }
+                LIMIT 1";
+            $rows = $sparql_client->query($query, 'rows');
+            $error = $sparql_client->getErrors();
+            // Если нет ошибок при запросе и есть результат запроса
+            if (!$error && $rows['result']['rows']) {
+                array_push($class_query_results, $rows);
+                $formed_entities[$fc_key] = 'http://dbpedia.org/ontology/' . $fc_value;
+                // Определение возможных родительских классов для найденного класса
+                $this->searchParentClasses($sparql_client, $formed_entities[$fc_key], $heading_title);
+            }
+            else {
+                // SPARQL-запрос к DBpedia resource для поиска концептов
+                $query = "PREFIX db: <http://dbpedia.org/resource/>
+                    SELECT db:$fc_value ?property ?object
+                    WHERE { db:$fc_value ?property ?object }
                     LIMIT 1";
                 $rows = $sparql_client->query($query, 'rows');
-                if (isset($rows['result']) && $rows['result']['rows']) {
-                    array_push($class_query_results, $rows);
-                    $formed_entities[$fc_key] = 'http://dbpedia.org/ontology/' . $fc_value;
-                    // Определение возможных родительских классов для найденного класса
+                $error = $sparql_client->getErrors();
+                // Если нет ошибок при запросе и есть результат запроса
+                if (!$error && $rows['result']['rows']) {
+                    array_push($concept_query_results, $rows);
+                    $formed_entities[$fc_key] = 'http://dbpedia.org/resource/' . $fc_value;
+                    // Определение возможных родительских классов для найденного концепта
                     $this->searchParentClasses($sparql_client, $formed_entities[$fc_key], $heading_title);
                 }
                 else {
-                    // SPARQL-запрос к DBpedia resource для поиска концептов
-                    $query = "PREFIX db: <http://dbpedia.org/resource/>
-                        SELECT db:$fc_value ?property ?object
-                        WHERE { db:$fc_value ?property ?object }
-                        LIMIT 1";
-                    $rows = $sparql_client->query($query, 'rows');
-                    if (isset($rows['result']) && $rows['result']['rows']) {
-                        array_push($concept_query_results, $rows);
-                        $formed_entities[$fc_key] = 'http://dbpedia.org/resource/' . $fc_value;
-                        // Определение возможных родительских классов для найденного концепта
-                        $this->searchParentClasses($sparql_client, $formed_entities[$fc_key], $heading_title);
-                    }
-                    else {
-                        // Обход массива корректных знаечний столбцов для поиска свойств класса (отношений)
-                        foreach ($formed_properties as $fp_key => $fp_value) {
-                            if ($fp_key == $fc_key) {
-                                // SPARQL-запрос к DBpedia ontology для поиска свойств классов (отношений)
-                                $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
-                                    SELECT ?concept dbo:$fp_value ?object
-                                    WHERE { ?concept dbo:$fp_value ?object }
+                    // Обход массива корректных знаечний столбцов для поиска свойств класса (отношений)
+                    foreach ($formed_properties as $fp_key => $fp_value) {
+                        if ($fp_key == $fc_key) {
+                            // SPARQL-запрос к DBpedia ontology для поиска свойств классов (отношений)
+                            $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+                                SELECT ?concept dbo:$fp_value ?object
+                                WHERE { ?concept dbo:$fp_value ?object }
+                                LIMIT 1";
+                            $rows = $sparql_client->query($query, 'rows');
+                            $error = $sparql_client->getErrors();
+                            // Если нет ошибок при запросе и есть результат запроса
+                            if (!$error && $rows['result']['rows']) {
+                                array_push($property_query_results, $rows);
+                                $formed_entities[$fp_key] = 'http://dbpedia.org/ontology/' . $fp_value;
+                            }
+                            else {
+                                // SPARQL-запрос к DBpedia property для поиска свойств классов (отношений)
+                                $query = "PREFIX dbp: <http://dbpedia.org/property/>
+                                    SELECT ?concept dbp:$fp_value ?object
+                                    WHERE { ?concept dbp:$fp_value ?object }
                                     LIMIT 1";
                                 $rows = $sparql_client->query($query, 'rows');
-                                if (isset($rows['result']) && $rows['result']['rows']) {
+                                $error = $sparql_client->getErrors();
+                                // Если нет ошибок при запросе и есть результат запроса
+                                if (!$error && $rows['result']['rows']) {
                                     array_push($property_query_results, $rows);
-                                    $formed_entities[$fp_key] = 'http://dbpedia.org/ontology/' . $fp_value;
-                                }
-                                else {
-                                    // SPARQL-запрос к DBpedia property для поиска свойств классов (отношений)
-                                    $query = "PREFIX dbp: <http://dbpedia.org/property/>
-                                        SELECT ?concept dbp:$fp_value ?object
-                                        WHERE { ?concept dbp:$fp_value ?object }
-                                        LIMIT 1";
-                                    $rows = $sparql_client->query($query, 'rows');
-                                    if (isset($rows['result']) && $rows['result']['rows']) {
-                                        array_push($property_query_results, $rows);
-                                        $formed_entities[$fp_key] = 'http://dbpedia.org/property/' . $fp_value;
-                                    }
+                                    $formed_entities[$fp_key] = 'http://dbpedia.org/property/' . $fp_value;
                                 }
                             }
                         }
@@ -157,27 +161,24 @@ class CanonicalTableAnnotator
                     $formed_concepts[$value] = $correct_string;
                 }
         $concept_query_results = array();
-        // Подключение к DBpedia
-        $endpoint = 'http://dbpedia.org/sparql';
-        $sparql_client = new SparqlClient();
-        $sparql_client->setEndpointRead($endpoint);
-        $error = $sparql_client->getErrors();
-        // Если нет ошибок при подключении
-        if (!$error) {
-            // Обход массива корректных значений столбца с данными для поиска подходящих концептов
-            foreach ($formed_concepts as $key => $value) {
-                // SPARQL-запрос к DBpedia resource для поиска концептов
-                $query = "PREFIX db: <http://dbpedia.org/resource/>
-                    SELECT db:$value ?property ?object
-                    WHERE { db:$value ?property ?object }
-                    LIMIT 1";
-                $rows = $sparql_client->query($query, 'rows');
-                if (isset($rows['result']) && $rows['result']['rows']) {
-                    array_push($concept_query_results, $rows);
-                    $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
-                    // Определение возможных родительских классов для найденного концепта
-                    $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
-                }
+        // Обход массива корректных значений столбца с данными для поиска подходящих концептов
+        foreach ($formed_concepts as $key => $value) {
+            // Подключение к DBpedia
+            $sparql_client = new SparqlClient();
+            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+            // SPARQL-запрос к DBpedia resource для поиска концептов
+            $query = "PREFIX db: <http://dbpedia.org/resource/>
+                SELECT db:$value ?property ?object
+                WHERE { db:$value ?property ?object }
+                LIMIT 1";
+            $rows = $sparql_client->query($query, 'rows');
+            $error = $sparql_client->getErrors();
+            // Если нет ошибок при запросе и есть результат запроса
+            if (!$error && $rows['result']['rows']) {
+                array_push($concept_query_results, $rows);
+                $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
+                // Определение возможных родительских классов для найденного концепта
+                $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
             }
         }
 
