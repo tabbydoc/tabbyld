@@ -10,7 +10,8 @@ use yii\base\Model;
  */
 class ExcelFileForm extends Model
 {
-    const SHEET_NAME = 'CANONICAL TABLE';
+    const CANONICAL_TABLE_SHEET = 'CANONICAL TABLE';
+    const NER_SHEET = 'NER';
 
     public $excel_file;
 

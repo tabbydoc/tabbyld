@@ -143,12 +143,18 @@ class DefaultController extends Controller
                 $data = Excel::import($file_form->excel_file->tempName, [
                     'setFirstRecordAsKeys' => true,
                     'setIndexSheetByName' => true,
-                    'getOnlySheet' => ExcelFileForm::SHEET_NAME,
+                    'getOnlySheet' => ExcelFileForm::CANONICAL_TABLE_SHEET,
+                ]);
+                // Получение данных о метках NER из файла XSLX
+                $ner_data = Excel::import($file_form->excel_file->tempName, [
+                    'setFirstRecordAsKeys' => true,
+                    'setIndexSheetByName' => true,
+                    'getOnlySheet' => ExcelFileForm::NER_SHEET,
                 ]);
                 // Создание объекта аннотатора таблиц
                 $annotator = new CanonicalTableAnnotator();
                 // Аннотирование столбца "DATA"
-                $data_concept_query_results = $annotator->annotateTableData($data);
+                $data_concept_query_results = $annotator->annotateTableData($data, $ner_data);
                 // Аннотирование столбца "RowHeading"
                 list($row_heading_class_query_results, $row_heading_concept_query_results,
                     $row_heading_property_query_results) = $annotator

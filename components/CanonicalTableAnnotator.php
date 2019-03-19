@@ -12,6 +12,10 @@ use BorderCloud\SPARQL\SparqlClient;
  */
 class CanonicalTableAnnotator
 {
+    const NUMERIC_LABEL = 'NUMERIC';
+    const DATE_LABEL = 'DATE';
+    const UNDEFINED_LABEL = 'UNDEFINED';
+
     const ENDPOINT_NAME = 'http://dbpedia.org/sparql'; // Название точки доступа SPARQL
     const DATA_TITLE = 'DATA';                         // Имя первого заголовка столбца канонической таблицы
     const ROW_HEADING_TITLE = 'RowHeading1';           // Имя второго заголовка столбца канонической таблицы
@@ -148,39 +152,85 @@ class CanonicalTableAnnotator
      * @param $data - данные каноничечкой таблицы
      * @return array - массив с результатми поиска концептов в онтологии DBpedia
      */
-    public function annotateTableData($data)
+//    public function annotateTableData($data)
+//    {
+//        $formed_concepts = array();
+//        // Формирование массива неповторяющихся корректных значений столбца с данными для поиска концептов в отнологии
+//        foreach ($data as $item)
+//            foreach ($item as $key => $value)
+//                if ($key == self::DATA_TITLE) {
+//                    // Формирование массива корректных значений для поиска концептов (классов)
+//                    $str = ucwords(strtolower($value));
+//                    $correct_string = str_replace(' ', '', $str);
+//                    $formed_concepts[$value] = $correct_string;
+//                }
+//        $concept_query_results = array();
+//        // Обход массива корректных значений столбца с данными для поиска подходящих концептов
+//        foreach ($formed_concepts as $key => $value) {
+//            // Подключение к DBpedia
+//            $sparql_client = new SparqlClient();
+//            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+//            // SPARQL-запрос к DBpedia resource для поиска концептов
+//            $query = "PREFIX db: <http://dbpedia.org/resource/>
+//                SELECT db:$value ?property ?object
+//                WHERE { db:$value ?property ?object }
+//                LIMIT 1";
+//            $rows = $sparql_client->query($query, 'rows');
+//            $error = $sparql_client->getErrors();
+//            // Если нет ошибок при запросе и есть результат запроса
+//            if (!$error && $rows['result']['rows']) {
+//                array_push($concept_query_results, $rows);
+//                $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
+//                // Определение возможных родительских классов для найденного концепта
+//                $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
+//            }
+//        }
+//
+//        return $concept_query_results;
+//    }
+
+    /**
+     *
+     * @param $data
+     * @param $ner_data
+     * @return array
+     */
+    public function annotateTableData($data, $ner_data)
     {
         $formed_concepts = array();
+        $formed_ner_concepts = array();
+        $i = 0;
         // Формирование массива неповторяющихся корректных значений столбца с данными для поиска концептов в отнологии
         foreach ($data as $item)
             foreach ($item as $key => $value)
                 if ($key == self::DATA_TITLE) {
+                    $i++;
                     // Формирование массива корректных значений для поиска концептов (классов)
                     $str = ucwords(strtolower($value));
                     $correct_string = str_replace(' ', '', $str);
                     $formed_concepts[$value] = $correct_string;
+                    //
+                    $j = 0;
+                    // Формирование массива неповторяющихся корректных значений столбца с данными для поиска концептов в отнологии
+                    foreach ($ner_data as $ner_item)
+                        foreach ($ner_item as $ner_key => $ner_value)
+                            if ($ner_key == self::DATA_TITLE) {
+                                $j++;
+                                // Формирование массива корректных значений для поиска концептов (классов)
+                                if ($i == $j) {
+                                    $str = ucwords(strtolower($ner_value));
+                                    $correct_string = str_replace(' ', '', $str);
+                                    $formed_ner_concepts[$value] = $correct_string;
+                                }
+                            }
                 }
+        //
         $concept_query_results = array();
         // Обход массива корректных значений столбца с данными для поиска подходящих концептов
-        foreach ($formed_concepts as $key => $value) {
-            // Подключение к DBpedia
-            $sparql_client = new SparqlClient();
-            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-            // SPARQL-запрос к DBpedia resource для поиска концептов
-            $query = "PREFIX db: <http://dbpedia.org/resource/>
-                SELECT db:$value ?property ?object
-                WHERE { db:$value ?property ?object }
-                LIMIT 1";
-            $rows = $sparql_client->query($query, 'rows');
-            $error = $sparql_client->getErrors();
-            // Если нет ошибок при запросе и есть результат запроса
-            if (!$error && $rows['result']['rows']) {
-                array_push($concept_query_results, $rows);
-                $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
-                // Определение возможных родительских классов для найденного концепта
-                $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
-            }
-        }
+        foreach ($formed_concepts as $key => $value)
+            foreach ($formed_ner_concepts as $ner_key => $ner_value)
+                if ($key == $ner_key)
+                    $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $ner_value;
 
         return $concept_query_results;
     }
