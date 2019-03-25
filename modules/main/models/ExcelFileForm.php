@@ -11,7 +11,7 @@ use yii\base\Model;
 class ExcelFileForm extends Model
 {
     const CANONICAL_TABLE_SHEET = 'CANONICAL TABLE';
-    const NER_SHEET = 'NER';
+    const NER_SHEET = 'NER RESULTS';
 
     public $excel_file;
 

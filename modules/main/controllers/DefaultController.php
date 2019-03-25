@@ -153,8 +153,20 @@ class DefaultController extends Controller
                 ]);
                 // Создание объекта аннотатора таблиц
                 $annotator = new CanonicalTableAnnotator();
-                // Аннотирование столбца "DATA"
-                $data_concept_query_results = $annotator->annotateTableData($data, $ner_data);
+                // Идентификация типа таблицы по столбцу DATA
+                $annotator->identifyTableType($data, $ner_data);
+                // Если установлена стратегия аннотирования литеральных значений
+                if ($annotator->annotation_strategy_type == CanonicalTableAnnotator::LITERAL_STRATEGY) {
+                    // Аннотирование столбца "DATA"
+                    $data_concept_query_results = $annotator->annotateTableLiteralData($data, $ner_data);
+                }
+                // Если установлена стратегия аннотирования именованных сущностей
+                if ($annotator->annotation_strategy_type ==
+                    CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
+                    // Аннотирование столбца "DATA"
+                    $data_concept_query_results = $annotator->annotateTableEntityData($data);
+                }
+
                 // Аннотирование столбца "RowHeading"
                 list($row_heading_class_query_results, $row_heading_concept_query_results,
                     $row_heading_property_query_results) = $annotator

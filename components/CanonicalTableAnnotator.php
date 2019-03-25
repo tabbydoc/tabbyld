@@ -2,7 +2,6 @@
 
 namespace app\components;
 
-use yii\bootstrap\Html;
 use BorderCloud\SPARQL\SparqlClient;
 
 /**
@@ -12,18 +11,25 @@ use BorderCloud\SPARQL\SparqlClient;
  */
 class CanonicalTableAnnotator
 {
-    const NUMERIC_LABEL = 'NUMERIC';
-    const DATE_LABEL = 'DATE';
-    const UNDEFINED_LABEL = 'UNDEFINED';
+    // Названия меток NER-аннотатора StanfordNLP
+    const NUMBER_NER_LABEL = 'NUMBER';
+    const DATE_NER_LABEL = 'DATE';
+    const UNDEFINED_NER_LABEL = 'UNDEFINED';
+    const DURATION_NER_LABEL = 'DURATION';
 
     const ENDPOINT_NAME = 'http://dbpedia.org/sparql'; // Название точки доступа SPARQL
     const DATA_TITLE = 'DATA';                         // Имя первого заголовка столбца канонической таблицы
     const ROW_HEADING_TITLE = 'RowHeading1';           // Имя второго заголовка столбца канонической таблицы
     const COLUMN_HEADING_TITLE = 'ColumnHeading';      // Имя третьего заголовка столбца канонической таблицы
 
-    public $data_entities = array();              // Массив найденных концептов для столбца с данными "DATA"
-    public $row_heading_entities = array();       // Массив найденных сущностей для столбца "RowHeading"
-    public $column_heading_entities = array();    // Массив найденных сущностей для столбца "ColumnHeading"
+    const LITERAL_STRATEGY = 'Literal annotation';             // Стратегия аннотирования литеральных значений
+    const NAMED_ENTITY_STRATEGY = 'Named entities annotation'; // Стратегия аннотирования именованных сущностей
+
+    public $annotation_strategy_type; // Тип стратегии аннотирования
+
+    public $data_entities = array();           // Массив найденных концептов для столбца с данными "DATA"
+    public $row_heading_entities = array();    // Массив найденных сущностей для столбца "RowHeading"
+    public $column_heading_entities = array(); // Массив найденных сущностей для столбца "ColumnHeading"
     // Массив кандидатов родительских классов для концептов в "DATA"
     public $parent_data_class_candidates = array();
     // Массив кандидатов родительских классов для сущностей в "RowHeading"
@@ -36,6 +42,113 @@ class CanonicalTableAnnotator
     public $parent_row_heading_classes = array();
     // Массив сс определенными родительскими классами для сущностей в "ColumnHeading"
     public $parent_column_heading_classes = array();
+
+    /**
+     * Идентификация типа таблицы по столбцу DATA.
+     *
+     * @param $data - данные каноничечкой таблицы
+     * @param $ner_labels - данные с NER-метками
+     */
+    public function identifyTableType($data, $ner_labels)
+    {
+        $formed_concepts = array();
+        $formed_ner_concepts = array();
+        // Счетчик для кол-ва значений ячеек столбца с данными
+        $i = 0;
+        // Цикл по всем ячейкам столбца с данными
+        foreach ($data as $item)
+            foreach ($item as $key => $value)
+                if ($key == self::DATA_TITLE) {
+                    $i++;
+                    $formed_concepts[$value] = $value;
+                    // Счетчик для кол-ва NER-меток для ячеек DATA
+                    $j = 0;
+                    // Цикл по всем ячейкам столбца с NER-метками
+                    foreach ($ner_labels as $ner_item)
+                        foreach ($ner_item as $ner_key => $ner_value)
+                            if ($ner_key == self::DATA_TITLE) {
+                                $j++;
+                                if ($i == $j)
+                                    $formed_ner_concepts[$value] = $ner_value;
+                            }
+                }
+        // Название метки NER
+        $ner_label = '';
+        // Обход массива значений столбца с метками NER
+        foreach ($formed_concepts as $key => $value)
+            foreach ($formed_ner_concepts as $ner_key => $ner_value)
+                if ($key == $ner_key)
+                    $ner_label = $ner_value;
+        // Если в столбце DATA содержаться литералы, то устанавливаем стратегию аннотирования литеральных значений
+        if ($ner_label == self::NUMBER_NER_LABEL || $ner_label == self::DATE_NER_LABEL)
+            $this->annotation_strategy_type = self::LITERAL_STRATEGY;
+        // Если в столбце DATA содержаться сущности, то устанавливаем стратегию аннотирования именованных сущностей
+        if ($ner_label == self::UNDEFINED_NER_LABEL || $ner_label == self::DURATION_NER_LABEL)
+            $this->annotation_strategy_type = self::NAMED_ENTITY_STRATEGY;
+    }
+
+    /**
+     * Аннотирование содержимого столбца "DATA" с литеральными значениями.
+     *
+     * @param $data - данные каноничечкой таблицы
+     * @param $ner_labels - данные с NER-метками
+     * @return array - массив с результатми поиска объектов и классов в онтологии DBpedia
+     */
+    public function annotateTableLiteralData($data, $ner_labels)
+    {
+        $formed_concepts = array();
+        $formed_ner_concepts = array();
+        // Счетчик для кол-ва значений ячеек столбца с данными
+        $i = 0;
+        // Цикл по всем ячейкам столбца с данными
+        foreach ($data as $item)
+            foreach ($item as $key => $value)
+                if ($key == self::DATA_TITLE) {
+                    $i++;
+                    // Формирование массива корректных значений ячеек столбца с данными
+                    $str = ucwords(strtolower($value));
+                    $correct_string = str_replace(' ', '', $str);
+                    $formed_concepts[$value] = $correct_string;
+                    // Счетчик для кол-ва NER-меток для ячеек DATA
+                    $j = 0;
+                    // Цикл по всем ячейкам столбца с NER-метками
+                    foreach ($ner_labels as $ner_item)
+                        foreach ($ner_item as $ner_key => $ner_value)
+                            if ($ner_key == self::DATA_TITLE) {
+                                $j++;
+                                // Формирование массива соответсвий NER-меток значениям столбца с данными
+                                if ($i == $j) {
+                                    $str = ucwords(strtolower($ner_value));
+                                    $correct_string = str_replace(' ', '', $str);
+                                    $formed_ner_concepts[$value] = $correct_string;
+                                }
+                            }
+                }
+        $concept_query_results = array();
+        // Обход массива корректных значений столбца с данными для поиска подходящих объектов или классов
+        foreach ($formed_concepts as $key => $value)
+            foreach ($formed_ner_concepts as $ner_key => $ner_value)
+                if ($key == $ner_key) {
+                    // Подключение к DBpedia
+                    $sparql_client = new SparqlClient();
+                    $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+                    // SPARQL-запрос к DBpedia для поиска точного совпадения с классом или объектом
+                    $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+                        PREFIX db: <http://dbpedia.org/resource/>
+                        SELECT ?class ?property ?object {
+                            ?class ?property ?object . FILTER (?class = dbo:$ner_value || ?class = db:$ner_value)
+                        } LIMIT 1";
+                    $rows = $sparql_client->query($query, 'rows');
+                    $error = $sparql_client->getErrors();
+                    // Если нет ошибок при запросе и есть результат запроса
+                    if (!$error && $rows['result']['rows']) {
+                        array_push($concept_query_results, $rows);
+                        $this->data_entities[$key] = $rows['result']['rows'][0]['class'];
+                    }
+                }
+
+        return $concept_query_results;
+    }
 
     /**
      * Аннотирование столбцов "RowHeading" и "ColumnHeading" содержащих значения заголовков исходной таблицы.
@@ -147,90 +260,44 @@ class CanonicalTableAnnotator
     }
 
     /**
-     * Аннотирование содержимого столбца "DATA".
+     * Аннотирование содержимого столбца "DATA" с именованными сущностями.
      *
      * @param $data - данные каноничечкой таблицы
      * @return array - массив с результатми поиска концептов в онтологии DBpedia
      */
-//    public function annotateTableData($data)
-//    {
-//        $formed_concepts = array();
-//        // Формирование массива неповторяющихся корректных значений столбца с данными для поиска концептов в отнологии
-//        foreach ($data as $item)
-//            foreach ($item as $key => $value)
-//                if ($key == self::DATA_TITLE) {
-//                    // Формирование массива корректных значений для поиска концептов (классов)
-//                    $str = ucwords(strtolower($value));
-//                    $correct_string = str_replace(' ', '', $str);
-//                    $formed_concepts[$value] = $correct_string;
-//                }
-//        $concept_query_results = array();
-//        // Обход массива корректных значений столбца с данными для поиска подходящих концептов
-//        foreach ($formed_concepts as $key => $value) {
-//            // Подключение к DBpedia
-//            $sparql_client = new SparqlClient();
-//            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-//            // SPARQL-запрос к DBpedia resource для поиска концептов
-//            $query = "PREFIX db: <http://dbpedia.org/resource/>
-//                SELECT db:$value ?property ?object
-//                WHERE { db:$value ?property ?object }
-//                LIMIT 1";
-//            $rows = $sparql_client->query($query, 'rows');
-//            $error = $sparql_client->getErrors();
-//            // Если нет ошибок при запросе и есть результат запроса
-//            if (!$error && $rows['result']['rows']) {
-//                array_push($concept_query_results, $rows);
-//                $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
-//                // Определение возможных родительских классов для найденного концепта
-//                $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
-//            }
-//        }
-//
-//        return $concept_query_results;
-//    }
-
-    /**
-     *
-     * @param $data
-     * @param $ner_data
-     * @return array
-     */
-    public function annotateTableData($data, $ner_data)
+    public function annotateTableEntityData($data)
     {
         $formed_concepts = array();
-        $formed_ner_concepts = array();
-        $i = 0;
         // Формирование массива неповторяющихся корректных значений столбца с данными для поиска концептов в отнологии
         foreach ($data as $item)
             foreach ($item as $key => $value)
                 if ($key == self::DATA_TITLE) {
-                    $i++;
                     // Формирование массива корректных значений для поиска концептов (классов)
                     $str = ucwords(strtolower($value));
                     $correct_string = str_replace(' ', '', $str);
                     $formed_concepts[$value] = $correct_string;
-                    //
-                    $j = 0;
-                    // Формирование массива неповторяющихся корректных значений столбца с данными для поиска концептов в отнологии
-                    foreach ($ner_data as $ner_item)
-                        foreach ($ner_item as $ner_key => $ner_value)
-                            if ($ner_key == self::DATA_TITLE) {
-                                $j++;
-                                // Формирование массива корректных значений для поиска концептов (классов)
-                                if ($i == $j) {
-                                    $str = ucwords(strtolower($ner_value));
-                                    $correct_string = str_replace(' ', '', $str);
-                                    $formed_ner_concepts[$value] = $correct_string;
-                                }
-                            }
                 }
-        //
         $concept_query_results = array();
         // Обход массива корректных значений столбца с данными для поиска подходящих концептов
-        foreach ($formed_concepts as $key => $value)
-            foreach ($formed_ner_concepts as $ner_key => $ner_value)
-                if ($key == $ner_key)
-                    $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $ner_value;
+        foreach ($formed_concepts as $key => $value) {
+            // Подключение к DBpedia
+            $sparql_client = new SparqlClient();
+            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+            // SPARQL-запрос к DBpedia resource для поиска концептов
+            $query = "PREFIX db: <http://dbpedia.org/resource/>
+                SELECT db:$value ?property ?object
+                WHERE { db:$value ?property ?object }
+                LIMIT 1";
+            $rows = $sparql_client->query($query, 'rows');
+            $error = $sparql_client->getErrors();
+            // Если нет ошибок при запросе и есть результат запроса
+            if (!$error && $rows['result']['rows']) {
+                array_push($concept_query_results, $rows);
+                $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
+                // Определение возможных родительских классов для найденного концепта
+                $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
+            }
+        }
 
         return $concept_query_results;
     }
