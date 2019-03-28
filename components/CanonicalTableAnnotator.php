@@ -135,19 +135,86 @@ class CanonicalTableAnnotator
                     // SPARQL-запрос к DBpedia для поиска точного совпадения с классом или объектом
                     $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
                         PREFIX db: <http://dbpedia.org/resource/>
-                        SELECT ?class ?property ?object {
-                            ?class ?property ?object . FILTER (?class = dbo:$ner_value || ?class = db:$ner_value)
+                        SELECT ?subject ?property ?object {
+                            ?subject ?property ?object . FILTER (?subject = dbo:$ner_value || ?subject = db:$ner_value)
                         } LIMIT 1";
                     $rows = $sparql_client->query($query, 'rows');
                     $error = $sparql_client->getErrors();
                     // Если нет ошибок при запросе и есть результат запроса
                     if (!$error && $rows['result']['rows']) {
                         array_push($concept_query_results, $rows);
-                        $this->data_entities[$key] = $rows['result']['rows'][0]['class'];
+                        $this->data_entities[$key] = $rows['result']['rows'][0]['subject'];
                     }
                 }
 
         return $concept_query_results;
+    }
+
+    /**
+     * Поиск и формирование массива сущностей кандидатов.
+     *
+     * @param $value - значение для поиска сущностей кандидатов по вхождению
+     * @param $section_one - название сегмента в онтологии DBpedia
+     * @param $section_two - название сегмента в онтологии DBpedia
+     * @return bool|array - массив с результатми поиска сущностей кандидатов в онтологии DBpedia
+     */
+    public function getCandidateEntities($value, $section_one, $section_two = '')
+    {
+        // Подключение к DBpedia
+        $sparql_client = new SparqlClient();
+        $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+        // SPARQL-запрос к DBpedia для поиска кандидатов cущностей
+        $query = "SELECT ?subject ?property ?object
+            WHERE {
+                ?subject ?property ?object . FILTER regex(str(?subject), '$value') .
+                FILTER(strstarts(str(?subject), '$section_one') || strstarts(str(?subject), '$section_two'))
+            } LIMIT 1";
+        $rows = $sparql_client->query($query, 'rows');
+        $error = $sparql_client->getErrors();
+        // Если нет ошибок при запросе и есть результат запроса
+        if (!$error && $rows['result']['rows']) {
+            // Формирование массива сущностей кандидатов
+            $candidate_entities = array();
+            foreach ($rows['result']['rows'] as $row)
+                array_push($candidate_entities, $row['subject']);
+
+            return $candidate_entities;
+        } else
+            return false;
+    }
+
+    /**
+     * Вычисление расстояния Левенштейна между входным значением и сущностями кандидатов.
+     *
+     * @param $input_value - входное значение (слово)
+     * @param $candidate_entities - массив сущностей кандидатов
+     * @return array - ранжированный массив сущностей кандидатов
+     */
+    public function getLevenshteinDistance($input_value, $candidate_entities)
+    {
+        // Массив ранжированных сущностей кандидатов
+        $ranked_candidate_entities = array();
+        // Массив названий URI DBpedia
+        $URIs = array('http://dbpedia.org/ontology/', 'http://dbpedia.org/resource/', 'http://dbpedia.org/property/');
+        // Обход всех сущностей кандидатов из набора
+        foreach ($candidate_entities as $candidate_entity) {
+            // Удаление адреса URI у сущности кандидата
+            $candidate_entity_name = str_replace($URIs, '', $candidate_entity);
+            // Вычисление расстояния Левенштейна между входным значением и текущим названием сущности кандидата
+            $distance = levenshtein($input_value, $candidate_entity_name);
+            // Формирование массива ранжированных сущностей кандидатов
+            array_push($ranked_candidate_entities, [$candidate_entity_name, $distance]);
+        }
+        // Сортировка массива ранжированных сущностей кандидатов по возрастанию их ранга (расстояния Левенштейна)
+        for ($i = 0; $i < count($ranked_candidate_entities); $i++)
+            for ($j = $i + 1; $j < count($ranked_candidate_entities); $j++)
+                if ($ranked_candidate_entities[$i][1] >= $ranked_candidate_entities[$j][1]) {
+                    $temp = $ranked_candidate_entities[$j];
+                    $ranked_candidate_entities[$j] = $ranked_candidate_entities[$i];
+                    $ranked_candidate_entities[$i] = $temp;
+                }
+
+        return $ranked_candidate_entities;
     }
 
     /**
@@ -161,17 +228,17 @@ class CanonicalTableAnnotator
     {
         $formed_concepts = array();
         $formed_properties = array();
-        // Формирование массивов неповторяющихся корректных значений столбцов для поиска концептов и свойств в отнологии
+        // Формирование массивов неповторяющихся корректных значений столбцов для поиска сущностей в отнологии
         foreach ($data as $item)
             foreach ($item as $heading => $value)
                 if ($heading == $heading_title) {
                     $string_array = explode(" | ", $value);
                     foreach ($string_array as $string) {
-                        // Формирование массива корректных значений для поиска концептов (классов)
+                        // Формирование массива корректных значений для поиска классов и объектов
                         $str = ucwords(strtolower($string));
                         $correct_string = str_replace(' ', '', $str);
                         $formed_concepts[$string] = $correct_string;
-                        // Формирование массива корректных значений для поиска свойств классов (отношений)
+                        // Формирование массива корректных значений для поиска свойств (отношений)
                         $str = lcfirst(ucwords(strtolower($string)));
                         $correct_string = str_replace(' ', '', $str);
                         $formed_properties[$string] = $correct_string;
@@ -179,75 +246,20 @@ class CanonicalTableAnnotator
                 }
         $formed_entities = array();
         $class_query_results = array();
-        $concept_query_results = array();
-        $property_query_results = array();
         // Обход массива корректных значений столбцов для поиска классов и концептов
-        foreach ($formed_concepts as $fc_key => $fc_value) {
-            // Подключение к DBpedia
-            $sparql_client = new SparqlClient();
-            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-            // SPARQL-запрос к DBpedia ontology для поиска классов
-            $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
-                SELECT dbo:$fc_value ?property ?object
-                WHERE { dbo:$fc_value ?property ?object }
-                LIMIT 1";
-            $rows = $sparql_client->query($query, 'rows');
-            $error = $sparql_client->getErrors();
-            // Если нет ошибок при запросе и есть результат запроса
-            if (!$error && $rows['result']['rows']) {
-                array_push($class_query_results, $rows);
-                $formed_entities[$fc_key] = 'http://dbpedia.org/ontology/' . $fc_value;
-                // Определение возможных родительских классов для найденного класса
-                $this->searchParentClasses($sparql_client, $formed_entities[$fc_key], $heading_title);
-            }
-            else {
-                // SPARQL-запрос к DBpedia resource для поиска концептов
-                $query = "PREFIX db: <http://dbpedia.org/resource/>
-                    SELECT db:$fc_value ?property ?object
-                    WHERE { db:$fc_value ?property ?object }
-                    LIMIT 1";
-                $rows = $sparql_client->query($query, 'rows');
-                $error = $sparql_client->getErrors();
-                // Если нет ошибок при запросе и есть результат запроса
-                if (!$error && $rows['result']['rows']) {
-                    array_push($concept_query_results, $rows);
-                    $formed_entities[$fc_key] = 'http://dbpedia.org/resource/' . $fc_value;
-                    // Определение возможных родительских классов для найденного концепта
-                    $this->searchParentClasses($sparql_client, $formed_entities[$fc_key], $heading_title);
-                }
-                else {
-                    // Обход массива корректных знаечний столбцов для поиска свойств класса (отношений)
-                    foreach ($formed_properties as $fp_key => $fp_value) {
-                        if ($fp_key == $fc_key) {
-                            // SPARQL-запрос к DBpedia ontology для поиска свойств классов (отношений)
-                            $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
-                                SELECT ?concept dbo:$fp_value ?object
-                                WHERE { ?concept dbo:$fp_value ?object }
-                                LIMIT 1";
-                            $rows = $sparql_client->query($query, 'rows');
-                            $error = $sparql_client->getErrors();
-                            // Если нет ошибок при запросе и есть результат запроса
-                            if (!$error && $rows['result']['rows']) {
-                                array_push($property_query_results, $rows);
-                                $formed_entities[$fp_key] = 'http://dbpedia.org/ontology/' . $fp_value;
-                            }
-                            else {
-                                // SPARQL-запрос к DBpedia property для поиска свойств классов (отношений)
-                                $query = "PREFIX dbp: <http://dbpedia.org/property/>
-                                    SELECT ?concept dbp:$fp_value ?object
-                                    WHERE { ?concept dbp:$fp_value ?object }
-                                    LIMIT 1";
-                                $rows = $sparql_client->query($query, 'rows');
-                                $error = $sparql_client->getErrors();
-                                // Если нет ошибок при запросе и есть результат запроса
-                                if (!$error && $rows['result']['rows']) {
-                                    array_push($property_query_results, $rows);
-                                    $formed_entities[$fp_key] = 'http://dbpedia.org/property/' . $fp_value;
-                                }
-                            }
-                        }
-                    }
-                }
+        foreach ($formed_concepts as $key => $value) {
+            // Формирование набора классов кандидатов
+            $candidate_entities = $this->getCandidateEntities($value, 'http://dbpedia.org/ontology/');
+            // Если набор классов кандидатов сформирован, то вычисляем для них расстояние Левенштейна
+            if ($candidate_entities) {
+                $formed_entities[$key] = $this->getLevenshteinDistance($value, $candidate_entities);
+            } else {
+                // Формирование набора объектов кандидатов
+                $candidate_entities = $this->getCandidateEntities($value, 'http://dbpedia.org/resource/',
+                    'http://dbpedia.org/property/');
+                // Если набор объектов кандидатов сформирован, то вычисляем для них расстояние Левенштейна
+                if ($candidate_entities)
+                    $formed_entities[$key] = $this->getLevenshteinDistance($value, $candidate_entities);
             }
         }
         // Сохранение результатов аннотирования для столбцов с заголовками
@@ -256,7 +268,7 @@ class CanonicalTableAnnotator
         if ($heading_title == self::COLUMN_HEADING_TITLE)
             $this->column_heading_entities = $formed_entities;
 
-        return array($class_query_results, $concept_query_results, $property_query_results);
+        return $class_query_results;
     }
 
     /**

@@ -159,6 +159,12 @@ class DefaultController extends Controller
                 if ($annotator->annotation_strategy_type == CanonicalTableAnnotator::LITERAL_STRATEGY) {
                     // Аннотирование столбца "DATA"
                     $data_concept_query_results = $annotator->annotateTableLiteralData($data, $ner_data);
+                    // Аннотирование столбца "RowHeading"
+                    $row_heading_class_query_results = $annotator->annotateTableHeading(
+                        $data, CanonicalTableAnnotator::ROW_HEADING_TITLE);
+                    // Аннотирование столбца "ColumnHeading"
+                    $column_heading_class_query_results = $annotator->annotateTableHeading(
+                        $data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
                 }
                 // Если установлена стратегия аннотирования именованных сущностей
                 if ($annotator->annotation_strategy_type ==
@@ -167,48 +173,48 @@ class DefaultController extends Controller
                     $data_concept_query_results = $annotator->annotateTableEntityData($data);
                 }
 
-                // Аннотирование столбца "RowHeading"
-                list($row_heading_class_query_results, $row_heading_concept_query_results,
-                    $row_heading_property_query_results) = $annotator
-                    ->annotateTableHeading($data, CanonicalTableAnnotator::ROW_HEADING_TITLE);
-                // Аннотирование столбца "ColumnHeading"
-                list($column_heading_class_query_results, $column_heading_concept_query_results,
-                    $column_heading_property_query_results) = $annotator
-                        ->annotateTableHeading($data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
+//                // Аннотирование столбца "RowHeading"
+//                list($row_heading_class_query_results, $row_heading_concept_query_results,
+//                    $row_heading_property_query_results) = $annotator
+//                    ->annotateTableHeading($data, CanonicalTableAnnotator::ROW_HEADING_TITLE);
+//                // Аннотирование столбца "ColumnHeading"
+//                list($column_heading_class_query_results, $column_heading_concept_query_results,
+//                    $column_heading_property_query_results) = $annotator
+//                        ->annotateTableHeading($data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
                 // Формирование массивов сущностей для аннотированных значений ячеек в таблице
                 $data_entities = $annotator->data_entities;
                 $row_heading_entities = $annotator->row_heading_entities;
                 $column_heading_entities = $annotator->column_heading_entities;
-                // Формирование массивов кандидатов родительских классов для аннотированных сущностей
-                $parent_data_class_candidates = $annotator->parent_data_class_candidates;
-                $parent_row_heading_class_candidates = $annotator->parent_row_heading_class_candidates;
-                $parent_column_heading_class_candidates = $annotator->parent_column_heading_class_candidates;
-                // Формирование массивов определенных родительских классов для аннотированных сущностей
-                $parent_data_classes = $annotator->parent_data_classes;
-                $parent_row_heading_classes = $annotator->parent_row_heading_classes;
-                $parent_column_heading_classes = $annotator->parent_column_heading_classes;
-                // Формирование итогового времени затраченного на поиск сущностей в DBpedia
-                $all_data_concept_query_runtime = 0;
-                $all_row_heading_class_query_runtime = 0;
-                $all_row_heading_concept_query_runtime = 0;
-                $all_row_heading_property_query_runtime = 0;
-                $all_column_heading_class_query_runtime = 0;
-                $all_column_heading_concept_query_runtime = 0;
-                $all_column_heading_property_query_runtime = 0;
-                foreach ($data_concept_query_results as $concept_query_result)
-                    $all_data_concept_query_runtime += $concept_query_result['query_time'];
-                foreach ($row_heading_class_query_results as $class_query_result)
-                    $all_row_heading_class_query_runtime += $class_query_result['query_time'];
-                foreach ($row_heading_concept_query_results as $concept_query_result)
-                    $all_row_heading_concept_query_runtime += $concept_query_result['query_time'];
-                foreach ($row_heading_property_query_results as $property_query_result)
-                    $all_row_heading_property_query_runtime += $property_query_result['query_time'];
-                foreach ($column_heading_class_query_results as $class_query_result)
-                    $all_column_heading_class_query_runtime += $class_query_result['query_time'];
-                foreach ($column_heading_concept_query_results as $concept_query_result)
-                    $all_column_heading_concept_query_runtime += $concept_query_result['query_time'];
-                foreach ($column_heading_property_query_results as $property_query_result)
-                    $all_column_heading_property_query_runtime += $property_query_result['query_time'];
+//                // Формирование массивов кандидатов родительских классов для аннотированных сущностей
+//                $parent_data_class_candidates = $annotator->parent_data_class_candidates;
+//                $parent_row_heading_class_candidates = $annotator->parent_row_heading_class_candidates;
+//                $parent_column_heading_class_candidates = $annotator->parent_column_heading_class_candidates;
+//                // Формирование массивов определенных родительских классов для аннотированных сущностей
+//                $parent_data_classes = $annotator->parent_data_classes;
+//                $parent_row_heading_classes = $annotator->parent_row_heading_classes;
+//                $parent_column_heading_classes = $annotator->parent_column_heading_classes;
+//                // Формирование итогового времени затраченного на поиск сущностей в DBpedia
+//                $all_data_concept_query_runtime = 0;
+//                $all_row_heading_class_query_runtime = 0;
+//                $all_row_heading_concept_query_runtime = 0;
+//                $all_row_heading_property_query_runtime = 0;
+//                $all_column_heading_class_query_runtime = 0;
+//                $all_column_heading_concept_query_runtime = 0;
+//                $all_column_heading_property_query_runtime = 0;
+//                foreach ($data_concept_query_results as $concept_query_result)
+//                    $all_data_concept_query_runtime += $concept_query_result['query_time'];
+//                foreach ($row_heading_class_query_results as $class_query_result)
+//                    $all_row_heading_class_query_runtime += $class_query_result['query_time'];
+//                foreach ($row_heading_concept_query_results as $concept_query_result)
+//                    $all_row_heading_concept_query_runtime += $concept_query_result['query_time'];
+//                foreach ($row_heading_property_query_results as $property_query_result)
+//                    $all_row_heading_property_query_runtime += $property_query_result['query_time'];
+//                foreach ($column_heading_class_query_results as $class_query_result)
+//                    $all_column_heading_class_query_runtime += $class_query_result['query_time'];
+//                foreach ($column_heading_concept_query_results as $concept_query_result)
+//                    $all_column_heading_concept_query_runtime += $concept_query_result['query_time'];
+//                foreach ($column_heading_property_query_results as $property_query_result)
+//                    $all_column_heading_property_query_runtime += $property_query_result['query_time'];
 
                 // Check if the Session is Open, and Open it if it isn't Open already
                 if (!Yii::$app->session->getIsActive()) {
@@ -216,30 +222,30 @@ class DefaultController extends Controller
                 }
                 Yii::$app->session['data'] = $data;
                 Yii::$app->session['data_concept_query_results'] = $data_concept_query_results;
-                Yii::$app->session['row_heading_class_query_results'] = $row_heading_class_query_results;
-                Yii::$app->session['row_heading_property_query_results'] = $row_heading_property_query_results;
-                Yii::$app->session['row_heading_concept_query_results'] = $row_heading_concept_query_results;
-                Yii::$app->session['column_heading_class_query_results'] = $column_heading_class_query_results;
-                Yii::$app->session['column_heading_concept_query_results'] = $column_heading_concept_query_results;
-                Yii::$app->session['column_heading_property_query_results'] = $column_heading_property_query_results;
-                Yii::$app->session['all_data_concept_query_runtime'] = $all_data_concept_query_runtime;
-                Yii::$app->session['all_row_heading_class_query_runtime'] = $all_row_heading_class_query_runtime;
-                Yii::$app->session['all_row_heading_concept_query_runtime'] = $all_row_heading_concept_query_runtime;
-                Yii::$app->session['all_row_heading_property_query_runtime'] = $all_row_heading_property_query_runtime;
-                Yii::$app->session['all_column_heading_class_query_runtime'] = $all_column_heading_class_query_runtime;
-                Yii::$app->session['all_column_heading_concept_query_runtime'] =
-                    $all_column_heading_concept_query_runtime;
-                Yii::$app->session['all_column_heading_property_query_runtime'] =
-                    $all_column_heading_property_query_runtime;
+//                Yii::$app->session['row_heading_class_query_results'] = $row_heading_class_query_results;
+//                Yii::$app->session['row_heading_property_query_results'] = $row_heading_property_query_results;
+//                Yii::$app->session['row_heading_concept_query_results'] = $row_heading_concept_query_results;
+//                Yii::$app->session['column_heading_class_query_results'] = $column_heading_class_query_results;
+//                Yii::$app->session['column_heading_concept_query_results'] = $column_heading_concept_query_results;
+//                Yii::$app->session['column_heading_property_query_results'] = $column_heading_property_query_results;
+//                Yii::$app->session['all_data_concept_query_runtime'] = $all_data_concept_query_runtime;
+//                Yii::$app->session['all_row_heading_class_query_runtime'] = $all_row_heading_class_query_runtime;
+//                Yii::$app->session['all_row_heading_concept_query_runtime'] = $all_row_heading_concept_query_runtime;
+//                Yii::$app->session['all_row_heading_property_query_runtime'] = $all_row_heading_property_query_runtime;
+//                Yii::$app->session['all_column_heading_class_query_runtime'] = $all_column_heading_class_query_runtime;
+//                Yii::$app->session['all_column_heading_concept_query_runtime'] =
+//                    $all_column_heading_concept_query_runtime;
+//                Yii::$app->session['all_column_heading_property_query_runtime'] =
+//                    $all_column_heading_property_query_runtime;
                 Yii::$app->session['data_entities'] = $data_entities;
                 Yii::$app->session['row_heading_entities'] = $row_heading_entities;
                 Yii::$app->session['column_heading_entities'] = $column_heading_entities;
-                Yii::$app->session['parent_data_class_candidates'] = $parent_data_class_candidates;
-                Yii::$app->session['parent_row_heading_class_candidates'] = $parent_row_heading_class_candidates;
-                Yii::$app->session['parent_column_heading_class_candidates'] = $parent_column_heading_class_candidates;
-                Yii::$app->session['parent_data_classes'] = $parent_data_classes;
-                Yii::$app->session['parent_row_heading_classes'] = $parent_row_heading_classes;
-                Yii::$app->session['parent_column_heading_classes'] = $parent_column_heading_classes;
+//                Yii::$app->session['parent_data_class_candidates'] = $parent_data_class_candidates;
+//                Yii::$app->session['parent_row_heading_class_candidates'] = $parent_row_heading_class_candidates;
+//                Yii::$app->session['parent_column_heading_class_candidates'] = $parent_column_heading_class_candidates;
+//                Yii::$app->session['parent_data_classes'] = $parent_data_classes;
+//                Yii::$app->session['parent_row_heading_classes'] = $parent_row_heading_classes;
+//                Yii::$app->session['parent_column_heading_classes'] = $parent_column_heading_classes;
                 Yii::$app->session->close();
 
                 return $this->redirect(['resulting-table']);

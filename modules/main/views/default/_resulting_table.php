@@ -40,25 +40,26 @@ use app\components\CanonicalTableAnnotator;
                         });
                     // Если ячейка принадлежит столбцу "RowHeading1"
                     if (col.className == "row-heading-value")
-                        $.each(row_heading_entities, function (id, value) {
-                            if (string == id) {
-                                var abbreviated_parent_concept = value.replace("http://dbpedia.org/ontology/", "dbo:");
-                                abbreviated_parent_concept =
-                                    abbreviated_parent_concept.replace("http://dbpedia.org/resource/", "db:");
-                                abbreviated_parent_concept =
-                                    abbreviated_parent_concept.replace("http://dbpedia.org/property/", "dbp:");
-                                col.innerHTML += " (" + abbreviated_parent_concept;
-                                $.each(parent_row_heading_classes, function (index, parent_row_heading_class) {
-                                    if (index == value)
-                                        col.innerHTML += " - <a href='#' class='row-heading-link' title='" +
-                                            parent_row_heading_class + "' annotated-entity='" + value +
-                                            "' data-toggle='modal' data-target='#selectParentClassModalForm'>" +
-                                            parent_row_heading_class.replace("http://dbpedia.org/ontology/", "dbo:") +
-                                            "</a>";
-                                });
-                                col.innerHTML += ")";
-                            }
-                        });
+                        console.log(row_heading_entities);
+//                        $.each(row_heading_entities, function (id, value) {
+//                            if (string == id) {
+//                                var abbreviated_parent_concept = value.replace("http://dbpedia.org/ontology/", "dbo:");
+//                                abbreviated_parent_concept =
+//                                    abbreviated_parent_concept.replace("http://dbpedia.org/resource/", "db:");
+//                                abbreviated_parent_concept =
+//                                    abbreviated_parent_concept.replace("http://dbpedia.org/property/", "dbp:");
+//                                col.innerHTML += " (" + abbreviated_parent_concept;
+//                                $.each(parent_row_heading_classes, function (index, parent_row_heading_class) {
+//                                    if (index == value)
+//                                        col.innerHTML += " - <a href='#' class='row-heading-link' title='" +
+//                                            parent_row_heading_class + "' annotated-entity='" + value +
+//                                            "' data-toggle='modal' data-target='#selectParentClassModalForm'>" +
+//                                            parent_row_heading_class.replace("http://dbpedia.org/ontology/", "dbo:") +
+//                                            "</a>";
+//                                });
+//                                col.innerHTML += ")";
+//                            }
+//                        });
                     // Если ячейка принадлежит столбцу "ColumnHeading"
                     if (col.className == "column-heading-value")
                         $.each(column_heading_entities, function (id, value) {
