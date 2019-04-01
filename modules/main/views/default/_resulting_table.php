@@ -11,6 +11,9 @@ use app\components\CanonicalTableAnnotator;
 <script type="text/javascript">
     // Выполнение скрипта при загрузке страницы
     $(document).ready(function () {
+        console.log(row_heading_entities);
+        console.log('---------------------');
+        console.log(column_heading_entities);
         // Каноническая таблица
         var resulting_canonical_table = document.getElementById("resulting_canonical-table");
         // Цикл по ячейкам канонической таблицы
@@ -39,8 +42,8 @@ use app\components\CanonicalTableAnnotator;
                             }
                         });
                     // Если ячейка принадлежит столбцу "RowHeading1"
-                    if (col.className == "row-heading-value")
-                        console.log(row_heading_entities);
+                    //if (col.className == "row-heading-value")
+                        //console.log(row_heading_entities);
 //                        $.each(row_heading_entities, function (id, value) {
 //                            if (string == id) {
 //                                var abbreviated_parent_concept = value.replace("http://dbpedia.org/ontology/", "dbo:");
@@ -61,26 +64,27 @@ use app\components\CanonicalTableAnnotator;
 //                            }
 //                        });
                     // Если ячейка принадлежит столбцу "ColumnHeading"
-                    if (col.className == "column-heading-value")
-                        $.each(column_heading_entities, function (id, value) {
-                            if (string == id) {
-                                var abbreviated_parent_concept = value.replace("http://dbpedia.org/ontology/", "dbo:");
-                                abbreviated_parent_concept =
-                                    abbreviated_parent_concept.replace("http://dbpedia.org/resource/", "db:");
-                                abbreviated_parent_concept =
-                                    abbreviated_parent_concept.replace("http://dbpedia.org/property/", "dbp:");
-                                col.innerHTML += " (" + abbreviated_parent_concept;
-                                $.each(parent_column_heading_classes, function (index, parent_column_heading_class) {
-                                    if (index == value)
-                                        col.innerHTML += " - <a href='#' class='column-heading-link' title='" +
-                                            parent_column_heading_class + "' annotated-entity='" + value +
-                                            "' data-toggle='modal' data-target='#selectParentClassModalForm'>" +
-                                            parent_column_heading_class.replace("http://dbpedia.org/ontology/", "dbo:") +
-                                            "</a>";
-                                });
-                                col.innerHTML += ")";
-                            }
-                        });
+                    //if (col.className == "column-heading-value")
+                        //console.log(column_heading_entities);
+//                        $.each(column_heading_entities, function (id, value) {
+//                            if (string == id) {
+//                                var abbreviated_parent_concept = value.replace("http://dbpedia.org/ontology/", "dbo:");
+//                                abbreviated_parent_concept =
+//                                    abbreviated_parent_concept.replace("http://dbpedia.org/resource/", "db:");
+//                                abbreviated_parent_concept =
+//                                    abbreviated_parent_concept.replace("http://dbpedia.org/property/", "dbp:");
+//                                col.innerHTML += " (" + abbreviated_parent_concept;
+//                                $.each(parent_column_heading_classes, function (index, parent_column_heading_class) {
+//                                    if (index == value)
+//                                        col.innerHTML += " - <a href='#' class='column-heading-link' title='" +
+//                                            parent_column_heading_class + "' annotated-entity='" + value +
+//                                            "' data-toggle='modal' data-target='#selectParentClassModalForm'>" +
+//                                            parent_column_heading_class.replace("http://dbpedia.org/ontology/", "dbo:") +
+//                                            "</a>";
+//                                });
+//                                col.innerHTML += ")";
+//                            }
+//                        });
                     if (string_array.length > (str_key + 1))
                         col.innerHTML += " | ";
                 });

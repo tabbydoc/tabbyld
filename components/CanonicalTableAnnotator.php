@@ -154,21 +154,32 @@ class CanonicalTableAnnotator
      * Поиск и формирование массива сущностей кандидатов.
      *
      * @param $value - значение для поиска сущностей кандидатов по вхождению
-     * @param $section_one - название сегмента в онтологии DBpedia
-     * @param $section_two - название сегмента в онтологии DBpedia
+     * @param $section - название сегмента в онтологии DBpedia
      * @return bool|array - массив с результатми поиска сущностей кандидатов в онтологии DBpedia
      */
-    public function getCandidateEntities($value, $section_one, $section_two = '')
+    public function getCandidateEntities($value, $section = '')
     {
         // Подключение к DBpedia
         $sparql_client = new SparqlClient();
         $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-        // SPARQL-запрос к DBpedia для поиска кандидатов cущностей
-        $query = "SELECT ?subject ?property ?object
-            WHERE {
-                ?subject ?property ?object . FILTER regex(str(?subject), '$value') .
-                FILTER(strstarts(str(?subject), '$section_one') || strstarts(str(?subject), '$section_two'))
-            } LIMIT 1";
+        // Если указано название сегмента в онтологии DBpedia
+        if ($section != '')
+            // SPARQL-запрос к DBpedia для поиска сущностей кандидатов из определенного сегмента
+            $query = "SELECT ?subject ?property ?object
+                FROM <http://dbpedia.org>
+                WHERE {
+                    ?subject ?property ?object
+                    FILTER regex(str(?subject), '$value', 'i')
+                    FILTER(strstarts(str(?subject), '$section'))
+                } LIMIT 10";
+        else
+            // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
+            $query = "SELECT ?subject ?property ?object
+                FROM <http://dbpedia.org>
+                WHERE {
+                    ?subject ?property ?object
+                    FILTER regex(str(?subject), '$value', 'i')
+                } LIMIT 10";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
         // Если нет ошибок при запросе и есть результат запроса
@@ -226,47 +237,49 @@ class CanonicalTableAnnotator
      */
     public function annotateTableHeading($data, $heading_title)
     {
-        $formed_concepts = array();
-        $formed_properties = array();
+        $formed_entities = array();
         // Формирование массивов неповторяющихся корректных значений столбцов для поиска сущностей в отнологии
         foreach ($data as $item)
             foreach ($item as $heading => $value)
                 if ($heading == $heading_title) {
                     $string_array = explode(" | ", $value);
-                    foreach ($string_array as $string) {
-                        // Формирование массива корректных значений для поиска классов и объектов
-                        $str = ucwords(strtolower($string));
-                        $correct_string = str_replace(' ', '', $str);
-                        $formed_concepts[$string] = $correct_string;
-                        // Формирование массива корректных значений для поиска свойств (отношений)
-                        $str = lcfirst(ucwords(strtolower($string)));
-                        $correct_string = str_replace(' ', '', $str);
-                        $formed_properties[$string] = $correct_string;
-                    }
+                    foreach ($string_array as $key => $string)
+                        // Формирование массива корректных значений для поиска сущностей
+                        $formed_entities[$string] = [$key, str_replace(' ', '', $string)];
                 }
-        $formed_entities = array();
         $class_query_results = array();
+        $ranked_candidate_entities = array();
         // Обход массива корректных значений столбцов для поиска классов и концептов
-        foreach ($formed_concepts as $key => $value) {
-            // Формирование набора классов кандидатов
-            $candidate_entities = $this->getCandidateEntities($value, 'http://dbpedia.org/ontology/');
-            // Если набор классов кандидатов сформирован, то вычисляем для них расстояние Левенштейна
-            if ($candidate_entities) {
-                $formed_entities[$key] = $this->getLevenshteinDistance($value, $candidate_entities);
-            } else {
-                // Формирование набора объектов кандидатов
-                $candidate_entities = $this->getCandidateEntities($value, 'http://dbpedia.org/resource/',
-                    'http://dbpedia.org/property/');
-                // Если набор объектов кандидатов сформирован, то вычисляем для них расстояние Левенштейна
+        foreach ($formed_entities as $key => $value) {
+            // Если текущее значение ячейки отмечено как начальное
+            if ($value[0] == 0) {
+                // Формирование набора классов кандидатов
+                $candidate_entities = $this->getCandidateEntities($value[1], 'http://dbpedia.org/ontology/');
+                // Если набор классов кандидатов сформирован, то вычисляем для них расстояние Левенштейна
                 if ($candidate_entities)
-                    $formed_entities[$key] = $this->getLevenshteinDistance($value, $candidate_entities);
+                    $ranked_candidate_entities[$key] = $this->getLevenshteinDistance($value[1], $candidate_entities);
+                else {
+                    // Формирование набора объектов и свойств кандидатов
+                    $candidate_entities = $this->getCandidateEntities($value[1], 'http://dbpedia.org/resource/');
+                    // Если набор объектов и свойств кандидатов сформирован, то вычисляем для них расстояние Левенштейна
+                    if ($candidate_entities)
+                        $ranked_candidate_entities[$key] = $this->getLevenshteinDistance($value[1], $candidate_entities);
+                }
+            }
+            // Если текущее значение ячейки не является начальным
+            if ($value[0] == 1) {
+                // Формирование набора классов, объектов и свойств кандидатов
+                $candidate_entities = $this->getCandidateEntities($value[1]);
+                // Если набор сущностей кандидатов сформирован, то вычисляем для них расстояние Левенштейна
+                if ($candidate_entities)
+                    $ranked_candidate_entities[$key] = $this->getLevenshteinDistance($value[1], $candidate_entities);
             }
         }
         // Сохранение результатов аннотирования для столбцов с заголовками
         if ($heading_title == self::ROW_HEADING_TITLE)
-            $this->row_heading_entities = $formed_entities;
+            $this->row_heading_entities = $ranked_candidate_entities;
         if ($heading_title == self::COLUMN_HEADING_TITLE)
-            $this->column_heading_entities = $formed_entities;
+            $this->column_heading_entities = $ranked_candidate_entities;
 
         return $class_query_results;
     }
