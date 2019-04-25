@@ -2,8 +2,7 @@
 
 /* @var $this yii\web\View */
 /* @var $form yii\bootstrap\ActiveForm */
-/* @var $file_form app\modules\main\models\XLSXFileForm */
-/* @var $data app\modules\main\controllers\DefaultController */
+/* @var $file_form app\modules\main\models\ExcelFileForm */
 
 use yii\helpers\Html;
 use yii\bootstrap\ActiveForm;
@@ -14,49 +13,26 @@ $this->params['breadcrumbs'][] = $this->title;
 
 <div class="main-default-annotate-table">
     <h1><?= Html::encode($this->title) ?></h1>
-
     <div class="row">
         <div class="col-lg-5">
 
             <?php $form = ActiveForm::begin([
-                'id'=>'import-xlsx-file-form',
+                'id'=>'import-excel-file-form',
                 'options' => ['enctype' => 'multipart/form-data']
             ]); ?>
 
             <?= $form->errorSummary($file_form); ?>
 
-            <?= $form->field($file_form, 'xlsx_file')->fileInput() ?>
+            <?= $form->field($file_form, 'excel_file')->fileInput() ?>
 
             <div class="form-group">
-                <?= Html::submitButton(Yii::t('app', 'BUTTON_IMPORT'),
-                    ['class' => 'btn btn-success', 'name'=>'import-xlsx-file-button']) ?>
+                <?= Html::submitButton('<span class="glyphicon glyphicon-import"></span> ' .
+                    Yii::t('app', 'BUTTON_IMPORT'),
+                    ['class' => 'btn btn-success', 'name'=>'import-excel-file-button']) ?>
             </div>
 
             <?php ActiveForm::end(); ?>
 
         </div>
     </div>
-
-    <?php if($data): ?>
-
-        <h2><?= Yii::t('app', 'TABLE_ANNOTATION_PAGE_TEXT') ?></h2>
-
-        <table class="table table-striped table-bordered">
-            <tr>
-                <td><b>DATA</b></td>
-                <td><b>RowHeading1</b></td>
-                <td><b>ColumnHeading</b></td>
-            </tr>
-            <?php
-            foreach($data as $item) {
-                echo "<tr>";
-                foreach ($item as $key => $value) {
-                    echo "<td>" . json_encode($value) . "</br>";
-                }
-                echo "</tr>";
-            }
-            ?>
-        </table>
-
-    <?php endif; ?>
 </div>

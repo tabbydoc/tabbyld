@@ -12,7 +12,6 @@ return [
     'NAV_SIGN_IN' => 'Вход',
     'NAV_SIGN_OUT' => 'Выход',
     'NAV_TABLE_ANNOTATION' => 'Аннотирование таблицы',
-    'NAV_SPARQL_QUERY' => 'Запрос SPARQL',
     /* Пункты правого меню */
     'SIDE_NAV_POSSIBLE_ACTIONS' => 'Возможные действия',
 
@@ -35,6 +34,8 @@ return [
     'BUTTON_EXPORT' => 'Экспортировать',
     'BUTTON_GENERATE' => 'Сгенерировать',
     'BUTTON_RETURN' => 'Вернуться к',
+    'BUTTON_EXPORT_EXCEL_FILE' => 'Экспортировать в Excel',
+    'BUTTON_EXPORT_RDF_FILE' => 'Экспортировать в RDF',
 
     /* Общие сообщения об ошибках */
     'ERROR_MESSAGE_PAGE_NOT_FOUND' => 'Страница не найдена.',
@@ -66,9 +67,23 @@ return [
     'SIGN_IN_PAGE_RESET_LINK' => 'сбросить его',
     /* Страница аннотирования таблиц */
     'TABLE_ANNOTATION_PAGE_TITLE' => 'Аннотирование таблицы',
-    'TABLE_ANNOTATION_PAGE_TEXT' => 'Полученная таблица',
-    /* Страница запроса SPARQL */
-    'SPARQL_QUERY_PAGE_TITLE' => 'Запрос SPARQL',
+    'TABLE_ANNOTATION_PAGE_RESULTING_TABLE' => 'Полученная таблица',
+    'TABLE_ANNOTATION_PAGE_DATA_RESULTS' => 'Результаты запросов для DATA',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_RESULTS' => 'Результаты запросов для RowHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_RESULTS' => 'Результаты запросов для ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_DATA_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для DATA',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для RowHeading',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для RowHeading',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для RowHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Результаты запроса по классам для ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Результаты запроса по концептам для ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY' => 'Родительские классы для: ',
+    /* Сообщения для страницы аннотирования таблиц */
+    'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'Вы успешно аннотировали каноническую таблицу!',
+    /* Страница модального окна для аннотирования таблиц */
+    'TABLE_ANNOTATION_PAGE_SELECT_PARENT_CLASS' => 'Выбор родительского класса',
+    'TABLE_ANNOTATION_PAGE_MODAL_FORM_TEXT' => 'Выберите родительский класс из следующих кандидатов:',
 
     /* Формы */
     /* ContactForm */
@@ -85,8 +100,8 @@ return [
     'LOGIN_FORM_MESSAGE_INCORRECT_USERNAME_OR_PASSWORD' => 'Неверное имя пользователя или пароль.',
     'LOGIN_FORM_MESSAGE_BLOCKED_ACCOUNT' => 'Ваш аккаунт заблокирован.',
     'LOGIN_FORM_MESSAGE_NOT_CONFIRMED_ACCOUNT' => 'Ваш аккаунт не подтвержден.',
-    /* XLSXFileForm */
-    'XLSX_FILE_FORM_XLSX_FILE' => 'Файл XLSX',
+    /* ExcelFileForm */
+    'EXCEL_FILE_FORM_EXCEL_FILE' => 'Файл Excel (*.xls, *.xlsx)',
 
     /* Модели */
     /* Lang */

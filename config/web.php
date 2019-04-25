@@ -39,7 +39,7 @@ $config = [
                 'contact' => 'main/default/contact',
                 'sing-in' => 'main/default/sing-in',
                 'annotate-table' => 'main/default/annotate-table',
-                'sparql-query' => 'main/default/sparql-query',
+                'resulting-table' => 'main/default/resulting-table',
             ],
         ],
         'cache' => [

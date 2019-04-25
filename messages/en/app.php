@@ -12,7 +12,6 @@ return [
     'NAV_SIGN_IN' => 'Sign in',
     'NAV_SIGN_OUT' => 'Sign out',
     'NAV_TABLE_ANNOTATION' => 'Table annotation',
-    'NAV_SPARQL_QUERY' => 'SPARQL query',
     /* Пункты правого меню */
     'SIDE_NAV_POSSIBLE_ACTIONS' => 'Possible actions',
 
@@ -35,6 +34,8 @@ return [
     'BUTTON_EXPORT' => 'Export',
     'BUTTON_GENERATE' => 'Generate',
     'BUTTON_RETURN' => 'Return to',
+    'BUTTON_EXPORT_EXCEL_FILE' => 'Export Excel',
+    'BUTTON_EXPORT_RDF_FILE' => 'Export RDF',
 
     /* Общие сообщения об ошибках */
     'ERROR_MESSAGE_PAGE_NOT_FOUND' => 'Page not found.',
@@ -66,9 +67,23 @@ return [
     'SIGN_IN_PAGE_RESET_LINK' => 'reset it',
     /* Страница аннотирования таблиц */
     'TABLE_ANNOTATION_PAGE_TITLE' => 'Table annotation',
-    'TABLE_ANNOTATION_PAGE_TEXT' => 'Resulting table',
-    /* Страница запроса SPARQL */
-    'SPARQL_QUERY_PAGE_TITLE' => 'SPARQL query',
+    'TABLE_ANNOTATION_PAGE_RESULTING_TABLE' => 'Resulting table',
+    'TABLE_ANNOTATION_PAGE_DATA_RESULTS' => 'DATA results',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_RESULTS' => 'RowHeading results',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_RESULTS' => 'ColumnHeading results',
+    'TABLE_ANNOTATION_PAGE_DATA_CONCEPT_QUERY_RESULTS' => 'Concept query results for DATA',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_CLASS_QUERY_RESULTS' => 'Class query results for RowHeading',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_CONCEPT_QUERY_RESULTS' => 'Concept query results for RowHeading',
+    'TABLE_ANNOTATION_PAGE_ROW_HEADING_PROPERTY_QUERY_RESULTS' => 'Property query results for RowHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CLASS_QUERY_RESULTS' => 'Class query results for ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS' => 'Concept query results for ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Property query results for ColumnHeading',
+    'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY' => 'Parent classes for: ',
+    /* Сообщения для страницы аннотирования таблиц */
+    'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'You have successfully annotated canonical table!',
+    /* Страница модального окна для аннотирования таблиц */
+    'TABLE_ANNOTATION_PAGE_SELECT_PARENT_CLASS' => 'Select parent class',
+    'TABLE_ANNOTATION_PAGE_MODAL_FORM_TEXT' => 'Select parent class from the following candidates:',
 
     /* Формы */
     /* ContactForm */
@@ -85,8 +100,8 @@ return [
     'LOGIN_FORM_MESSAGE_INCORRECT_USERNAME_OR_PASSWORD' => 'Username or password is incorrect.',
     'LOGIN_FORM_MESSAGE_BLOCKED_ACCOUNT' => 'Your account has been blocked.',
     'LOGIN_FORM_MESSAGE_NOT_CONFIRMED_ACCOUNT' => 'Your account is not confirmed.',
-    /* XLSXFileForm */
-    'XLSX_FILE_FORM_XLSX_FILE' => 'XLSX file',
+    /* ExcelFileForm */
+    'EXCEL_FILE_FORM_EXCEL_FILE' => 'Excel file (*.xls, *.xlsx)',
 
     /* Модели */
     /* Lang */
