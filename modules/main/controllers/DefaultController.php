@@ -156,7 +156,7 @@ class DefaultController extends Controller
                 // Идентификация типа таблицы по столбцу DATA
                 $annotator->identifyTableType($data, $ner_data);
                 // Если установлена стратегия аннотирования литеральных значений
-                if ($annotator->annotation_strategy_type == CanonicalTableAnnotator::LITERAL_STRATEGY) {
+                if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::LITERAL_STRATEGY) {
                     // Аннотирование столбца "DATA"
                     $data_concept_query_results = $annotator->annotateTableLiteralData($data, $ner_data);
                     // Аннотирование столбца "RowHeading"
@@ -167,8 +167,7 @@ class DefaultController extends Controller
                         $data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
                 }
                 // Если установлена стратегия аннотирования именованных сущностей
-                if ($annotator->annotation_strategy_type ==
-                    CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
+                if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
                     // Аннотирование столбца "DATA"
                     $data_concept_query_results = $annotator->annotateTableEntityData($data);
                 }
