@@ -117,6 +117,8 @@ class CanonicalTableAnnotator
                 WHERE {
                     ?subject ?property ?object
                     FILTER regex(str(?subject), '$value', 'i')
+                    FILTER(strstarts(str(?subject), 'http://dbpedia.org/ontology/') ||
+                           strstarts(str(?subject), 'http://dbpedia.org/resource/'))
                 } LIMIT 10";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
@@ -247,48 +249,27 @@ class CanonicalTableAnnotator
                         // Формирование массива корректных значений для поиска сущностей
                         $formed_entities[$string] = [$key, str_replace(' ', '', $string)];
                 }
-        $class_query_results = array();
         $ranked_candidate_entities = array();
         $all_candidate_entities = array();
         // Обход массива корректных значений столбцов для поиска классов и концептов
         foreach ($formed_entities as $key => $value) {
-            $candidate_entities = array();
-            // Если текущее значение ячейки отмечено как начальное
-            if ($value[0] == 0) {
-                // Формирование набора классов кандидатов
-                $candidate_entities = $this->getCandidateEntities($value[1], 'http://dbpedia.org/ontology/');
-                // Если набор классов кандидатов сформирован, то вычисляем для них расстояние Левенштейна
-                if ($candidate_entities)
-                    $ranked_candidate_entities[$key] = $this->getLevenshteinDistance($value[1], $candidate_entities);
-                else {
-                    // Формирование набора объектов и свойств кандидатов
-                    $candidate_entities = $this->getCandidateEntities($value[1], 'http://dbpedia.org/resource/');
-                    // Если набор объектов и свойств кандидатов сформирован, то вычисляем для них расстояние Левенштейна
-                    if ($candidate_entities)
-                        $ranked_candidate_entities[$key] = $this->getLevenshteinDistance($value[1], $candidate_entities);
-                }
-            }
-            // Если текущее значение ячейки не является начальным
-            if ($value[0] == 1) {
-                // Формирование набора классов, объектов и свойств кандидатов
-                $candidate_entities = $this->getCandidateEntities($value[1]);
-                // Если набор сущностей кандидатов сформирован, то вычисляем для них расстояние Левенштейна
-                if ($candidate_entities)
-                    $ranked_candidate_entities[$key] = $this->getLevenshteinDistance($value[1], $candidate_entities);
-            }
+            // Формирование набора классов, объектов и свойств кандидатов
+            $candidate_entities = $this->getCandidateEntities($value[1]);
             // Добавление массива сущностей кандидатов в общий набор массивов
-            if ($candidate_entities != false)
-                $all_candidate_entities[$key] = $candidate_entities;
+            //$all_candidate_entities[$key] = $candidate_entities;
+            // Если набор сущностей кандидатов сформирован, то вычисляем для них расстояние Левенштейна
+            if ($candidate_entities)
+                $ranked_candidate_entities[$key] = $this->getLevenshteinDistance($value[1], $candidate_entities);
         }
         // Нахождение связей между сущностями кандидатов
-        $all_ranked_candidate_entities = $this->getRelationshipDistance($all_candidate_entities);
+        //$all_ranked_candidate_entities = $this->getRelationshipDistance($all_candidate_entities);
         // Сохранение результатов аннотирования для столбцов с заголовками
         if ($heading_title == self::ROW_HEADING_TITLE)
-            $this->row_heading_entities = $all_ranked_candidate_entities;
+            $this->row_heading_entities = $ranked_candidate_entities;
         if ($heading_title == self::COLUMN_HEADING_TITLE)
             $this->column_heading_entities = $ranked_candidate_entities;
 
-        return $class_query_results;
+        return $all_candidate_entities;
     }
 
     /**

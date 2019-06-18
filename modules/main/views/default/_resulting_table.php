@@ -5,7 +5,6 @@
 use yii\bootstrap\Html;
 use yii\bootstrap\ActiveForm;
 use app\components\CanonicalTableAnnotator;
-
 ?>
 
 <script type="text/javascript">
@@ -30,14 +29,14 @@ use app\components\CanonicalTableAnnotator;
                         $.each(data_entities, function (id, value) {
                             if (string == id) {
                                 col.innerHTML += " (" + value.replace("http://dbpedia.org/resource/", "db:");
-                                $.each(parent_data_classes, function (index, parent_data_class) {
-                                    if (index == value) {
-                                        col.innerHTML += " - <a href='#' class='data-link' title='" + parent_data_class +
-                                            "' data-toggle='modal' data-target='#selectParentClassModalForm' " +
-                                            "annotated-entity='" + value + "'>" +
-                                            parent_data_class.replace("http://dbpedia.org/ontology/", "dbo:") + "</a>";
-                                    }
-                                });
+//                                $.each(parent_data_classes, function (index, parent_data_class) {
+//                                    if (index == value) {
+//                                        col.innerHTML += " - <a href='#' class='data-link' title='" + parent_data_class +
+//                                            "' data-toggle='modal' data-target='#selectParentClassModalForm' " +
+//                                            "annotated-entity='" + value + "'>" +
+//                                            parent_data_class.replace("http://dbpedia.org/ontology/", "dbo:") + "</a>";
+//                                    }
+//                                });
                                 col.innerHTML += ")";
                             }
                         });
