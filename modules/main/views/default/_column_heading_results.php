@@ -4,20 +4,18 @@
 
 <?php if($column_heading_concept_query_results): ?>
     <h2><?= Yii::t('app', 'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_CONCEPT_QUERY_RESULTS') ?></h2>
-    <table class="table table-striped table-bordered">
-        <tr>
-            <?php foreach($column_heading_concept_query_results[0]['result']['variables'] as $variable): ?>
-                <td><b><?php printf('%-20.20s', $variable); ?></b></td>
-            <?php endforeach; ?>
-        </tr>
-        <?php foreach($column_heading_concept_query_results as $concept_query_result): ?>
-            <?php foreach($concept_query_result['result']['rows'] as $row): ?>
+    <?php foreach($column_heading_concept_query_results as $key => $column_heading_concept_query_result): ?>
+        <table class="table table-striped table-bordered">
+            <tr>
+                <td><b><?= $key; ?></b></td>
+                <td><b>Rang</b></td>
+            </tr>
+            <?php foreach($column_heading_concept_query_result as $value): ?>
                 <tr>
-                    <?php foreach($concept_query_result['result']['variables'] as $variable): ?>
-                        <td><?= $row[$variable]; ?></td>
-                    <?php endforeach; ?>
+                    <td><?= $value[0]; ?></td>
+                    <td><?= $value[1]; ?></td>
                 </tr>
             <?php endforeach; ?>
-        <?php endforeach; ?>
-    </table>
+        </table>
+    <?php endforeach; ?>
 <?php endif; ?>
