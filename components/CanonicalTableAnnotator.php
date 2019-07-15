@@ -2,6 +2,7 @@
 
 namespace app\components;
 
+use DOMDocument;
 use BorderCloud\SPARQL\SparqlClient;
 
 /**
@@ -220,11 +221,13 @@ class CanonicalTableAnnotator
      * Получение агрегированных оценок (рангов) для сущностей кандидатов.
      *
      * @param $levenshtein_distance_candidate_entities - ранжированный массив сущностей кандидатов по расстоянию Левенштейна
+     * @param $a_weight_factor - весовой фактор А для определения важности оценки расстояния Левенштейна
      * @param $relationship_distance_candidate_entities - ранжированный массив сущностей кандидатов по связям
+     * @param $b_weight_factor - весовой фактор B для определения важности оценки по связям
      * @return array - ранжированный массив сущностей кандидатов с агрегированными оценками
      */
-    public function getAggregatedRanks($levenshtein_distance_candidate_entities,
-                                       $relationship_distance_candidate_entities)
+    public function getAggregatedRanks($levenshtein_distance_candidate_entities, $a_weight_factor,
+                                       $relationship_distance_candidate_entities, $b_weight_factor)
     {
         $ranked_candidate_entities = array();
         // Обход массива с наборами ранжированных сущностей кандидатов по расстоянию Левенштейна
@@ -241,11 +244,11 @@ class CanonicalTableAnnotator
                                 // Нормализация рангов (расстояния) Левенштейна
                                 $normalized_levenshtein_distance = 1 - $levenshtein_distance_candidate_entity[1] / 100;
                                 // Вычисление агрегированной оценки (ранга)
-                                $full_range = $relationship_distance_candidate_entity[1] +
-                                    $normalized_levenshtein_distance;
+                                $full_rank = $a_weight_factor * $normalized_levenshtein_distance +
+                                    $b_weight_factor * $relationship_distance_candidate_entity[1];
                                 // Формирование массива ранжированных сущностей кандидатов с агрегированной оценкой
                                 array_push($full_distance_array,
-                                    [$levenshtein_distance_candidate_entity[0], $full_range]);
+                                    [$levenshtein_distance_candidate_entity[0], $full_rank]);
                             }
             // Сортировка массива ранжированных сущностей кандидатов по убыванию их ранга
             for ($i = 0; $i < count($full_distance_array); $i++)
@@ -301,8 +304,8 @@ class CanonicalTableAnnotator
         // Нахождение связей между сущностями кандидатов
         $relationship_distance_candidate_entities = $this->getRelationshipDistance($all_candidate_entities);
         // Получение агрегированных оценок (рангов) для сущностей кандидатов
-        $ranked_candidate_entities = $this->getAggregatedRanks($levenshtein_distance_candidate_entities,
-            $relationship_distance_candidate_entities);
+        $ranked_candidate_entities = $this->getAggregatedRanks($levenshtein_distance_candidate_entities, 1,
+            $relationship_distance_candidate_entities, 1);
         // Сохранение результатов аннотирования для столбцов с заголовками
         if ($heading_title == self::ROW_HEADING_TITLE)
             $this->row_heading_entities = $ranked_candidate_entities;
@@ -504,5 +507,56 @@ class CanonicalTableAnnotator
                 }
 
         return $ranked_parent_class_candidates;
+    }
+
+    /**
+     * Генерация документа в формате RDF/XML.
+     */
+    public function generateRDFXMLCode()
+    {
+        // Создание документа DOM с кодировкой UTF8
+        $xml = new DomDocument('1.0', 'UTF-8');
+        // Создание корневого узла RDF с определением пространства имен
+        $rdf_element = $xml->createElement('rdf:RDF');
+        $rdf_element->setAttribute('xmlns:rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
+        $rdf_element->setAttribute('xmlns:dbo', 'http://dbpedia.org/ontology/');
+        $rdf_element->setAttribute('xmlns:db', 'http://dbpedia.org/resource/');
+        $rdf_element->setAttribute('xmlns:dbp', 'http://dbpedia.org/property/');
+        // Добавление корневого узла в XML-документ
+        $xml->appendChild($rdf_element);
+        // Создание узла триплета "Number"
+        $number_element = $xml->createElement('rdf:Description');
+        $number_element->setAttribute('rdf:about', 'http://dbpedia.org/resource/Number');
+        $number_flag = false;
+        // Создание узла триплета "Date"
+        $date_element = $xml->createElement('rdf:Description');
+        $date_element->setAttribute('rdf:about', 'http://dbpedia.org/resource/Date');
+        $date_flag = false;
+        // Цикл по всем найденным кандидатам для столбца DATA
+        foreach($this->data_entities as $key => $value) {
+            if ($value == 'http://dbpedia.org/resource/Number') {
+                // Добавление узла триплета "Number" в корневой узел RDF, если он не добавлен
+                if (!$number_flag) {
+                    $rdf_element->appendChild($number_element);
+                    $number_flag = true;
+                }
+                // Добавление объектов для триплета "Number"
+                $node_element = $xml->createElement('dbp:titleNumber', $key);
+                $number_element->appendChild($node_element);
+            }
+            if ($value == 'http://dbpedia.org/resource/Date') {
+                // Добавление узла триплета "Date" в корневой узел RDF, если он не добавлен
+                if (!$date_flag) {
+                    $rdf_element->appendChild($date_element);
+                    $date_flag = true;
+                }
+                // Добавление объектов для триплета "Date"
+                $node_element = $xml->createElement('dbp:title', $key);
+                $date_element->appendChild($node_element);
+            }
+        }
+        // Сохранение RDF-файла
+        $xml->formatOutput = true;
+        $xml->save('example.rdf');
     }
 }

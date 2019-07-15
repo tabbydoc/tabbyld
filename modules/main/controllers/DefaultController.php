@@ -176,6 +176,8 @@ class DefaultController extends Controller
                     // Аннотирование столбца "ColumnHeading"
                     $column_heading_concept_query_results = $annotator->annotateTableHeading(
                         $data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
+                    // Генерация RDF-документа в формате RDF/XML
+                    $annotator->generateRDFXMLCode();
                 }
                 // Если установлена стратегия аннотирования именованных сущностей
                 if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
@@ -199,5 +201,20 @@ class DefaultController extends Controller
             'row_heading_concept_query_results' => $row_heading_concept_query_results,
             'column_heading_concept_query_results' => $column_heading_concept_query_results,
         ]);
+    }
+
+    /**
+     * Экспорт RDF-документа c результатами аннотирования таблицы.
+     *
+     * @return bool
+     */
+    public function actionExportRdf()
+    {
+        $file = 'example.rdf';
+        header('Content-Disposition: attachment;filename=' . $file);
+        header('Content-Type: text/xml');
+        readfile($file);
+
+        return false;
     }
 }

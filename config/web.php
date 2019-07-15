@@ -39,6 +39,7 @@ $config = [
                 'contact' => 'main/default/contact',
                 'sing-in' => 'main/default/sing-in',
                 'annotate-table' => 'main/default/annotate-table',
+                'export-rdf' => 'main/default/export-rdf',
             ],
         ],
         'cache' => [
