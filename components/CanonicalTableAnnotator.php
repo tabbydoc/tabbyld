@@ -12,13 +12,23 @@ use BorderCloud\SPARQL\SparqlClient;
  */
 class CanonicalTableAnnotator
 {
-    // Названия меток NER-аннотатора StanfordNLP
+    // Названия меток NER-аннотатора Stanford NLP
     const NUMBER_NER_LABEL = 'NUMBER';
     const DATE_NER_LABEL = 'DATE';
+    const TIME_NER_LABEL = 'TIME';
+    const MONEY_NER_LABEL = 'MONEY';
+    const PERCENT_NER_LABEL = 'PERCENT';
     const UNDEFINED_NER_LABEL = 'UNDEFINED';
-    const DURATION_NER_LABEL = 'DURATION';
+    const LOCATION_NER_LABEL = 'LOCATION';
+    const PERSON_NER_LABEL = 'PERSON';
+    const ORGANIZATION_NER_LABEL = 'ORGANIZATION';
 
     const ENDPOINT_NAME = 'https://dbpedia.org/sparql'; // Название точки доступа SPARQL
+
+    const DBPEDIA_ONTOLOGY_SECTION = 'http://dbpedia.org/ontology/'; // Название (адрес) сегмента онтологии DBpedia
+    const DBPEDIA_RESOURCE_SECTION = 'http://dbpedia.org/resource/'; // Название (адрес) сегмента ресурсов DBpedia
+    const DBPEDIA_PROPERTY_SECTION = 'http://dbpedia.org/property/'; // Название (адрес) сегмента свойств DBpedia
+
     const DATA_TITLE = 'DATA';                         // Имя первого заголовка столбца канонической таблицы
     const ROW_HEADING_TITLE = 'RowHeading1';           // Имя второго заголовка столбца канонической таблицы
     const COLUMN_HEADING_TITLE = 'ColumnHeading';      // Имя третьего заголовка столбца канонической таблицы
@@ -82,10 +92,12 @@ class CanonicalTableAnnotator
                 if ($key == $ner_key)
                     $ner_label = $ner_value;
         // Если в столбце DATA содержаться литералы, то устанавливаем стратегию аннотирования литеральных значений
-        if ($ner_label == self::NUMBER_NER_LABEL || $ner_label == self::DATE_NER_LABEL)
+        if (in_array($ner_label, array(self::NUMBER_NER_LABEL, self::DATE_NER_LABEL, self::TIME_NER_LABEL,
+            self::MONEY_NER_LABEL, self::PERCENT_NER_LABEL)))
             $this->current_annotation_strategy_type = self::LITERAL_STRATEGY;
         // Если в столбце DATA содержаться сущности, то устанавливаем стратегию аннотирования именованных сущностей
-        if ($ner_label == self::UNDEFINED_NER_LABEL || $ner_label == self::DURATION_NER_LABEL)
+        if (in_array($ner_label, array(self::UNDEFINED_NER_LABEL, self::LOCATION_NER_LABEL, self::PERSON_NER_LABEL,
+            self::ORGANIZATION_NER_LABEL)))
             $this->current_annotation_strategy_type = self::NAMED_ENTITY_STRATEGY;
     }
 
@@ -148,7 +160,7 @@ class CanonicalTableAnnotator
         // Массив ранжированных сущностей кандидатов
         $ranked_candidate_entities = array();
         // Массив названий URI DBpedia
-        $URIs = array('http://dbpedia.org/ontology/', 'http://dbpedia.org/resource/', 'http://dbpedia.org/property/');
+        $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION, self::DBPEDIA_PROPERTY_SECTION);
         // Обход всех сущностей кандидатов из набора
         foreach ($candidate_entities as $candidate_entity) {
             // Удаление адреса URI у сущности кандидата
@@ -173,7 +185,7 @@ class CanonicalTableAnnotator
         // Массив ранжированных сущностей кандидатов
         $ranked_candidate_entities = array();
         // Массив названий URI DBpedia
-        $URIs = array('http://dbpedia.org/ontology/', 'http://dbpedia.org/resource/', 'http://dbpedia.org/property/');
+        $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION, self::DBPEDIA_PROPERTY_SECTION);
         // Обход всех наборов сущностей кандидатов
         foreach ($all_candidate_entities as $key => $candidate_entities) {
             // Массив сущностей кандидатов ранжированных по связям
@@ -274,7 +286,7 @@ class CanonicalTableAnnotator
      */
     public function annotateTableHeading($data, $heading_title)
     {
-        $formed_entities = array();
+        $formed_labels = array();
         // Формирование массивов неповторяющихся корректных значений столбцов для поиска сущностей в отнологии
         foreach ($data as $item)
             foreach ($item as $heading => $value)
@@ -282,20 +294,20 @@ class CanonicalTableAnnotator
                     $string_array = explode(" | ", $value);
                     foreach ($string_array as $key => $string)
                         // Формирование массива корректных значений для поиска сущностей
-                        $formed_entities[$string] = [$key, str_replace(' ', '', $string)];
+                        $formed_labels[$string] = [$key, str_replace(' ', '', $string)];
                 }
         // Массив для хранения массивов сущностей кандидатов
         $all_candidate_entities = array();
         // Массив для ранжированных сущностей кандидатов по расстоянию Левенштейна
         $levenshtein_distance_candidate_entities = array();
         // Обход массива корректных значений столбцов для поиска классов и концептов
-        foreach ($formed_entities as $key => $value) {
+        foreach ($formed_labels as $key => $label) {
             // Формирование набора сущностей кандидатов (классов и объектов)
-            $candidate_entities = $this->getCandidateEntities($value[1]);
+            $candidate_entities = $this->getCandidateEntities($label[1]);
             // Если набор сущностей кандидатов сформирован
             if ($candidate_entities) {
                 // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
-                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($value[1],
+                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($label[1],
                     $candidate_entities);
                 // Добавление массива сущностей кандидатов в общий набор
                 $all_candidate_entities[$key] = $candidate_entities;
@@ -324,8 +336,8 @@ class CanonicalTableAnnotator
      */
     public function annotateTableLiteralData($data, $ner_labels)
     {
-        $formed_concepts = array();
-        $formed_ner_concepts = array();
+        $formed_data_entries = array();
+        $formed_ner_labels = array();
         // Счетчик для кол-ва значений ячеек столбца с данными
         $i = 0;
         // Цикл по всем ячейкам столбца с данными
@@ -336,7 +348,7 @@ class CanonicalTableAnnotator
                     // Формирование массива корректных значений ячеек столбца с данными
                     $str = ucwords(strtolower($value));
                     $correct_string = str_replace(' ', '', $str);
-                    $formed_concepts[$value] = $correct_string;
+                    $formed_data_entries[$value] = $correct_string;
                     // Счетчик для кол-ва NER-меток для ячеек DATA
                     $j = 0;
                     // Цикл по всем ячейкам столбца с NER-метками
@@ -348,14 +360,14 @@ class CanonicalTableAnnotator
                                 if ($i == $j) {
                                     $str = ucwords(strtolower($ner_value));
                                     $correct_string = str_replace(' ', '', $str);
-                                    $formed_ner_concepts[$value] = $correct_string;
+                                    $formed_ner_labels[$value] = $correct_string;
                                 }
                             }
                 }
         $concept_query_results = array();
         // Обход массива корректных значений столбца с данными для поиска подходящих объектов или классов
-        foreach ($formed_concepts as $key => $value)
-            foreach ($formed_ner_concepts as $ner_key => $ner_value)
+        foreach ($formed_data_entries as $key => $entry)
+            foreach ($formed_ner_labels as $ner_key => $ner_label)
                 if ($key == $ner_key) {
                     // Подключение к DBpedia
                     $sparql_client = new SparqlClient();
@@ -364,7 +376,7 @@ class CanonicalTableAnnotator
                     $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
                         PREFIX db: <http://dbpedia.org/resource/>
                         SELECT ?subject ?property ?object {
-                            ?subject ?property ?object . FILTER (?subject = dbo:$ner_value || ?subject = db:$ner_value)
+                            ?subject ?property ?object . FILTER (?subject = dbo:$ner_label || ?subject = db:$ner_label)
                         } LIMIT 1";
                     $rows = $sparql_client->query($query, 'rows');
                     $error = $sparql_client->getErrors();
@@ -382,41 +394,60 @@ class CanonicalTableAnnotator
      * Аннотирование содержимого столбца "DATA" с именованными сущностями.
      *
      * @param $data - данные каноничечкой таблицы
+     * @param $ner_labels - данные с NER-метками
      * @return array - массив с результатми поиска концептов в онтологии DBpedia
      */
-    public function annotateTableEntityData($data)
+    public function annotateTableEntityData($data, $ner_labels)
     {
-        $formed_concepts = array();
-        // Формирование массива неповторяющихся корректных значений столбца с данными для поиска концептов в отнологии
+        $formed_data_entries = array();
+        $formed_ner_labels = array();
+        // Счетчик для кол-ва значений ячеек столбца с данными
+        $i = 0;
+        // Цикл по всем ячейкам столбца с данными
         foreach ($data as $item)
             foreach ($item as $key => $value)
                 if ($key == self::DATA_TITLE) {
-                    // Формирование массива корректных значений для поиска концептов (классов)
+                    $i++;
+                    // Формирование массива корректных значений ячеек столбца с данными
                     $str = ucwords(strtolower($value));
                     $correct_string = str_replace(' ', '', $str);
-                    $formed_concepts[$value] = $correct_string;
+                    $formed_data_entries[$value] = $correct_string;
+                    // Счетчик для кол-ва NER-меток для ячеек DATA
+                    $j = 0;
+                    // Цикл по всем ячейкам столбца с NER-метками
+                    foreach ($ner_labels as $ner_item)
+                        foreach ($ner_item as $ner_key => $ner_value)
+                            if ($ner_key == self::DATA_TITLE) {
+                                $j++;
+                                // Формирование массива соответсвий NER-меток значениям столбца с данными
+                                if ($i == $j) {
+                                    $str = ucwords(strtolower($ner_value));
+                                    $correct_string = str_replace(' ', '', $str);
+                                    $formed_ner_labels[$value] = $correct_string;
+                                }
+                            }
                 }
         $concept_query_results = array();
-        // Обход массива корректных значений столбца с данными для поиска подходящих концептов
-        foreach ($formed_concepts as $key => $value) {
-            // Подключение к DBpedia
-            $sparql_client = new SparqlClient();
-            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-            // SPARQL-запрос к DBpedia resource для поиска концептов
-            $query = "PREFIX db: <http://dbpedia.org/resource/>
-                SELECT db:$value ?property ?object
-                WHERE { db:$value ?property ?object }
-                LIMIT 1";
-            $rows = $sparql_client->query($query, 'rows');
-            $error = $sparql_client->getErrors();
-            // Если нет ошибок при запросе и есть результат запроса
-            if (!$error && $rows['result']['rows']) {
-                array_push($concept_query_results, $rows);
-                $this->data_entities[$key] = 'http://dbpedia.org/resource/' . $value;
-                // Определение возможных родительских классов для найденного концепта
-                $this->searchParentClasses($sparql_client, $this->data_entities[$key], self::DATA_TITLE);
+
+        // Массив для хранения массивов сущностей кандидатов
+        $all_candidate_entities = array();
+        // Массив для ранжированных сущностей кандидатов по расстоянию Левенштейна
+        $levenshtein_distance_candidate_entities = array();
+        // Обход массива корректных значений столбца данных для поиска сущностей
+        foreach ($formed_data_entries as $key => $entry) {
+            // Формирование набора сущностей-кандидатов
+            $candidate_entities = $this->getCandidateEntities($entry, self::DBPEDIA_RESOURCE_SECTION);
+            // Если набор сущностей-кандидатов сформирован
+            if ($candidate_entities) {
+                // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
+                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($entry,
+                    $candidate_entities);
+                // Добавление массива сущностей кандидатов в общий набор
+                $all_candidate_entities[$key] = $candidate_entities;
             }
         }
+        // Сохранение результатов аннотирования для столбца с данными
+        $this->data_entities = $all_candidate_entities;
 
         return $concept_query_results;
     }
@@ -519,9 +550,9 @@ class CanonicalTableAnnotator
         // Создание корневого узла RDF с определением пространства имен
         $rdf_element = $xml->createElement('rdf:RDF');
         $rdf_element->setAttribute('xmlns:rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
-        $rdf_element->setAttribute('xmlns:dbo', 'http://dbpedia.org/ontology/');
-        $rdf_element->setAttribute('xmlns:db', 'http://dbpedia.org/resource/');
-        $rdf_element->setAttribute('xmlns:dbp', 'http://dbpedia.org/property/');
+        $rdf_element->setAttribute('xmlns:dbo', self::DBPEDIA_ONTOLOGY_SECTION);
+        $rdf_element->setAttribute('xmlns:db', self::DBPEDIA_RESOURCE_SECTION);
+        $rdf_element->setAttribute('xmlns:dbp', self::DBPEDIA_PROPERTY_SECTION);
         // Добавление корневого узла в XML-документ
         $xml->appendChild($rdf_element);
         // Создание узла триплета "Number"

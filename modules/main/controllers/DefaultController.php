@@ -171,18 +171,18 @@ class DefaultController extends Controller
                     // Аннотирование столбца "DATA"
                     $data_concept_query_results = $annotator->annotateTableLiteralData($data, $ner_data);
                     // Аннотирование столбца "RowHeading"
-                    $row_heading_concept_query_results = $annotator->annotateTableHeading(
-                        $data, CanonicalTableAnnotator::ROW_HEADING_TITLE);
+                    //$row_heading_concept_query_results = $annotator->annotateTableHeading(
+                    //    $data, CanonicalTableAnnotator::ROW_HEADING_TITLE);
                     // Аннотирование столбца "ColumnHeading"
-                    $column_heading_concept_query_results = $annotator->annotateTableHeading(
-                        $data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
+                    //$column_heading_concept_query_results = $annotator->annotateTableHeading(
+                    //    $data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
                     // Генерация RDF-документа в формате RDF/XML
-                    $annotator->generateRDFXMLCode();
+                    //$annotator->generateRDFXMLCode();
                 }
                 // Если установлена стратегия аннотирования именованных сущностей
                 if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
                     // Аннотирование столбца "DATA"
-                    $data_concept_query_results = $annotator->annotateTableEntityData($data);
+                    $data_concept_query_results = $annotator->annotateTableEntityData($data, $ner_data);
                 }
                 // Запоминание аннотированных сущностей
                 $data_entities = $annotator->data_entities;

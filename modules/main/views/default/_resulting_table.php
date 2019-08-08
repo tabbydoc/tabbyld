@@ -11,6 +11,7 @@ use app\components\CanonicalTableAnnotator;
 <script type="text/javascript">
     // Выполнение скрипта при загрузке страницы
     $(document).ready(function () {
+        console.log(data_entities);
         // Каноническая таблица
         var resulting_canonical_table = document.getElementById("resulting_canonical-table");
         // Цикл по ячейкам канонической таблицы
