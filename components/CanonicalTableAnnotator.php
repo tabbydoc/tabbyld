@@ -129,8 +129,7 @@ class CanonicalTableAnnotator
             $query = "SELECT ?subject ?property ?object
                 FROM <http://dbpedia.org>
                 WHERE {
-                    ?subject ?property ?object
-                    FILTER regex(str(?subject), '$value', 'i')
+                    ?subject ?property ?object . FILTER regex(str(?subject), '$value', 'i') .
                     FILTER(strstarts(str(?subject), '$section'))
                 } LIMIT 10";
         else
@@ -336,6 +335,62 @@ class CanonicalTableAnnotator
     }
 
     /**
+     * Определение сходства сущностей кандидатов по заголовкам таблицы.
+     *
+     * @param $formed_row_heading_labels - массив всех заголовков строки в канонической таблице
+     * @param $candidate_entities - массив сущностей кандидатов
+     * @return array - ранжированный массив сущностей кандидатов
+     */
+    public function getHeadingDistance($formed_row_heading_labels, $candidate_entities)
+    {
+        // Массив ранжированных сущностей кандидатов
+        $ranked_candidate_entities = array();
+        // Массив названий URI DBpedia
+        $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION, self::DBPEDIA_PROPERTY_SECTION);
+        // Обход всех сущностей из набора кандидатов
+        foreach ($candidate_entities as $candidate_entity) {
+            // Удаление адреса URI у сущности из набора кандидатов
+            $candidate_entity_name = str_replace($URIs, '', $candidate_entity);
+            // Подключение к DBpedia
+            $sparql_client = new SparqlClient();
+            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+            // SPARQL-запрос к DBpedia для поиска всех классов, которым принадлежит данная сущность
+            $section = self::DBPEDIA_ONTOLOGY_SECTION;
+            $query = "SELECT ?class
+                FROM <http://dbpedia.org>
+                WHERE { <$candidate_entity> rdf:type ?class . FILTER(strstarts(str(?class), '$section'))
+                }";
+            $rows = $sparql_client->query($query, 'rows');
+            $error = $sparql_client->getErrors();
+            // Если нет ошибок при запросе и есть результат запроса
+            if (!$error && $rows['result']['rows']) {
+                $rank = 100;
+                // Обход всех найденных классов для сущности кандидата
+                foreach ($rows['result']['rows'] as $item) {
+                    $distance = 100;
+                    // Удаление адреса URI у класса
+                    $class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION, '', $item['class']);
+                    // Обход всех заголовков в строке таблицы
+                    foreach ($formed_row_heading_labels as $heading_label) {
+                        // Вычисление расстояния Левенштейна между классом и текущим названием заголовка
+                        $current_distance = levenshtein($class_name, $heading_label);
+                        // Определение наименьшего расстояния Левенштейна
+                        if ($current_distance < $distance)
+                            $distance = $current_distance;
+                    }
+                    // Определение наименьшего расстояния Левенштейна для текущего класса
+                    if ($distance < $rank)
+                        $rank = $distance;
+                }
+                // Формирование массива ранжированных сущностей кандидатов
+                array_push($ranked_candidate_entities, [$candidate_entity_name, $rank]);
+            }
+        }
+
+        return $ranked_candidate_entities;
+    }
+
+    /**
      * Аннотирование столбцов "RowHeading" и "ColumnHeading" содержащих значения заголовков исходной таблицы.
      *
      * @param $data - данные каноничечкой таблицы
@@ -344,7 +399,7 @@ class CanonicalTableAnnotator
      */
     public function annotateTableHeading($data, $heading_title)
     {
-        $formed_labels = array();
+        $formed_heading_labels = array();
         // Формирование массивов неповторяющихся корректных значений столбцов для поиска сущностей в отнологии
         foreach ($data as $item)
             foreach ($item as $heading => $value)
@@ -352,20 +407,20 @@ class CanonicalTableAnnotator
                     $string_array = explode(" | ", $value);
                     foreach ($string_array as $key => $string)
                         // Формирование массива корректных значений для поиска сущностей
-                        $formed_labels[$string] = [$key, str_replace(' ', '', $string)];
+                        $formed_heading_labels[$string] = str_replace(' ', '', $string);
                 }
         // Массив для хранения массивов сущностей кандидатов
         $all_candidate_entities = array();
         // Массив для ранжированных сущностей кандидатов по расстоянию Левенштейна
         $levenshtein_distance_candidate_entities = array();
         // Обход массива корректных значений столбцов для поиска классов и концептов
-        foreach ($formed_labels as $key => $label) {
+        foreach ($formed_heading_labels as $key => $heading_label) {
             // Формирование набора сущностей кандидатов (классов и объектов)
-            $candidate_entities = $this->getCandidateEntities($label[1]);
+            $candidate_entities = $this->getCandidateEntities($heading_label);
             // Если набор сущностей кандидатов сформирован
             if ($candidate_entities) {
                 // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
-                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($label[1],
+                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($heading_label,
                     $candidate_entities);
                 // Добавление массива сущностей кандидатов в общий набор
                 $all_candidate_entities[$key] = $candidate_entities;
@@ -396,26 +451,20 @@ class CanonicalTableAnnotator
     {
         $formed_data_entries = array();
         $formed_ner_labels = array();
-        // Счетчик для кол-ва значений ячеек столбца с данными
-        $i = 0;
         // Цикл по всем ячейкам столбца с данными
-        foreach ($data as $item)
-            foreach ($item as $key => $value)
+        foreach ($data as $row_number => $row)
+            foreach ($row as $key => $value)
                 if ($key == self::DATA_TITLE) {
-                    $i++;
                     // Формирование массива корректных значений ячеек столбца с данными
                     $str = ucwords(strtolower($value));
                     $correct_string = str_replace(' ', '', $str);
                     $formed_data_entries[$value] = $correct_string;
-                    // Счетчик для кол-ва NER-меток для ячеек DATA
-                    $j = 0;
                     // Цикл по всем ячейкам столбца с NER-метками
-                    foreach ($ner_labels as $ner_item)
-                        foreach ($ner_item as $ner_key => $ner_value)
+                    foreach ($ner_labels as $ner_row_number => $ner_row)
+                        foreach ($ner_row as $ner_key => $ner_value)
                             if ($ner_key == self::DATA_TITLE) {
-                                $j++;
                                 // Формирование массива соответсвий NER-меток значениям столбца с данными
-                                if ($i == $j)
+                                if ($row_number == $ner_row_number)
                                     $formed_ner_labels[$value] = $ner_value;
                             }
                 }
@@ -467,53 +516,77 @@ class CanonicalTableAnnotator
     {
         $formed_data_entries = array();
         $formed_ner_labels = array();
-        // Счетчик для кол-ва значений ячеек столбца с данными
-        $i = 0;
-        // Цикл по всем ячейкам столбца с данными
-        foreach ($data as $item)
-            foreach ($item as $key => $value)
-                if ($key == self::DATA_TITLE) {
-                    $i++;
+        $formed_heading_labels = array();
+        // Цикл по всем ячейкам канонической таблицы
+        foreach ($data as $row_number => $row) {
+            $current_data_value = '';
+            $row_heading_labels = array();
+            foreach ($row as $heading => $value) {
+                // Если столбец с данными
+                if ($heading == self::DATA_TITLE) {
                     // Формирование массива корректных значений ячеек столбца с данными
                     $str = ucwords(strtolower($value));
                     $correct_string = str_replace(' ', '', $str);
                     $formed_data_entries[$value] = $correct_string;
-                    // Счетчик для кол-ва NER-меток для ячеек DATA
-                    $j = 0;
+                    // Запоминание текущего значения ячейки столбца с данными
+                    $current_data_value = $value;
                     // Цикл по всем ячейкам столбца с NER-метками
-                    foreach ($ner_labels as $ner_item)
-                        foreach ($ner_item as $ner_key => $ner_value)
+                    foreach ($ner_labels as $ner_row_number => $ner_row)
+                        foreach ($ner_row as $ner_key => $ner_value)
                             if ($ner_key == self::DATA_TITLE) {
-                                $j++;
                                 // Формирование массива соответсвий NER-меток значениям столбца с данными
-                                if ($i == $j)
+                                if ($row_number == $ner_row_number)
                                     $formed_ner_labels[$value] = $ner_value;
                             }
                 }
+                // Если столбцы с заголовками
+                if ($heading == self::ROW_HEADING_TITLE || $heading == self::COLUMN_HEADING_TITLE) {
+                    $string_array = explode(" | ", $value);
+                    foreach ($string_array as $key => $string)
+                        // Формирование массива корректных значений ячеек заголовков для строки
+                        array_push($row_heading_labels, str_replace(' ', '', $string));
+                }
+            }
+            // Формирование массива корректных значений ячеек заголовков таблицы
+            $formed_heading_labels[$current_data_value] = $row_heading_labels;
+        }
         $concept_query_results = array();
 
         // Массив для хранения массивов сущностей кандидатов
         $all_candidate_entities = array();
+        // Массив для ранжированных сущностей кандидатов по расстоянию Левенштейна
+        $levenshtein_distance_candidate_entities = array();
         // Массив для ранжированных сущностей кандидатов, определенных по их связям с классами, полученных NER-метками
         $ner_class_distance_candidate_entities = array();
+        // Массив для ранжированных сущностей кандидатов по заголовкам таблицы
+        $heading_distance_candidate_entities = array();
         // Обход массива корректных значений столбца данных для поиска референтных сущностей
         foreach ($formed_data_entries as $key => $entry) {
             // Формирование набора сущностей кандидатов
             $candidate_entities = $this->getCandidateEntities($entry, self::DBPEDIA_RESOURCE_SECTION);
             // Если набор сущностей кандидатов сформирован
-            if ($candidate_entities)
-                // Обход массива корректных значений NER-меток для столбца данных
-                foreach ($formed_ner_labels as $ner_key => $ner_label)
-                    if ($key == $ner_key) {
-                        // Вычисление сходства между сущностями из набора кандидатов и классом, определенного NER-меткой
-                        $ner_class_distance_candidate_entities[$key] = $this->getNerClassDistance($ner_label,
-                            $candidate_entities);
-                        // Добавление массива сущностей кандидатов в общий набор
-                        $all_candidate_entities[$key] = $candidate_entities;
-                    }
+            if ($candidate_entities) {
+//                // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
+//                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($entry,
+//                    $candidate_entities);
+//                // Обход массива корректных значений NER-меток для столбца данных
+//                foreach ($formed_ner_labels as $ner_key => $ner_label)
+//                    if ($key == $ner_key)
+//                        // Вычисление сходства между сущностями из набора кандидатов и классом, определенного NER-меткой
+//                        $ner_class_distance_candidate_entities[$key] = $this->getNerClassDistance($ner_label,
+//                            $candidate_entities);
+                // Обход массива всех заголовков таблицы
+                foreach ($formed_heading_labels as $heading_key => $formed_row_heading_labels)
+                    if ($key == $heading_key)
+                        // Вычисление сходства между сущностями из набора кандидатов по заголовкам
+                        $heading_distance_candidate_entities[$key] = $this->getHeadingDistance(
+                            $formed_row_heading_labels, $candidate_entities);
+                // Добавление массива сущностей кандидатов в общий набор
+                $all_candidate_entities[$key] = $candidate_entities;
+            }
         }
         // Сохранение результатов аннотирования для столбца с данными
-        $this->data_entities = $ner_class_distance_candidate_entities;
+        $this->data_entities = $heading_distance_candidate_entities;
 
         return $concept_query_results;
     }
