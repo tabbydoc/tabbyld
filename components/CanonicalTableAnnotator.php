@@ -65,6 +65,9 @@ class CanonicalTableAnnotator
     // Массив сс определенными родительскими классами для сущностей в "ColumnHeading"
     public $parent_column_heading_classes = array();
 
+    public $log = '';
+    public $all_query_time = 0;
+
     /**
      * Идентификация типа таблицы по столбцу DATA (блока данных).
      *
@@ -131,7 +134,7 @@ class CanonicalTableAnnotator
                 WHERE {
                     ?subject ?property ?object . FILTER regex(str(?subject), '$value', 'i') .
                     FILTER(strstarts(str(?subject), '$section'))
-                } LIMIT 10";
+                } LIMIT 100";
         else
             // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
             $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
@@ -142,9 +145,14 @@ class CanonicalTableAnnotator
                 WHERE { ?subject a ?object . FILTER ( regex(str(?subject), '$value', 'i') &&
                     ( (strstarts(str(?subject), str(dbo:)) && (str(?object) = str(owl:Class))) ||
                     (strstarts(str(?subject), str(db:)) && (str(?object) = str(owl:Thing))) ) )
-            } LIMIT 10";
+            } LIMIT 100";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
+
+        // Запить журнала
+        $this->log .= 'Запрос для ' . $value . ': ' . $rows['query_time'] . PHP_EOL;
+        $this->all_query_time += $rows['query_time'];
+
         // Если нет ошибок при запросе и есть результат запроса
         if (!$error && $rows['result']['rows']) {
             // Формирование массива сущностей кандидатов
@@ -153,6 +161,39 @@ class CanonicalTableAnnotator
                 array_push($candidate_entities, $row['subject']);
 
             return $candidate_entities;
+        } else
+            return false;
+    }
+
+    /**
+     * Поиск и формирование массива родительских классов для сущности кандидата.
+     *
+     * @param $entity - сущность кандидат
+     * @return array|bool - массив с результатми поиска родительских классов для сущности кандидата в онтологии DBpedia
+     */
+    public function getParentClasses($entity)
+    {
+        // Подключение к DBpedia
+        $sparql_client = new SparqlClient();
+        $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+        // SPARQL-запрос к DBpedia ontology для поиска родительских классов для сущности
+        $query = "SELECT ?class
+            FROM <http://dbpedia.org>
+            WHERE {
+                <$entity> ?property ?class
+                FILTER (strstarts(str(?class), 'http://dbpedia.org/ontology/'))
+            }
+            LIMIT 100";
+        $rows = $sparql_client->query($query, 'rows');
+        $error = $sparql_client->getErrors();
+        // Если нет ошибок при запросе и есть результат запроса
+        if (!$error && $rows['result']['rows']) {
+            // Формирование массива родительских классов
+            $parent_classes = array();
+            foreach ($rows['result']['rows'] as $row)
+                array_push($parent_classes, $row['class']);
+
+            return $parent_classes;
         } else
             return false;
     }
@@ -205,32 +246,44 @@ class CanonicalTableAnnotator
                 $candidate_entity_name = str_replace($URIs, '', $candidate_entity);
                 // Текущее растояние
                 $distance = 0;
+                // Подключение к DBpedia
+                $sparql_client = new SparqlClient();
+                $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+                $query = "";
                 // Обход всех сущностей кандидатов из набора
                 foreach ($all_candidate_entities as $items)
-                    foreach ($items as $item) {
+                    foreach ($items as $ce_key => $item) {
                         // Удаление адреса URI у сущности кандидата
                         $item_name = str_replace($URIs, '', $item);
                         // Если эта не одна и тажа сущность
-                        if ($candidate_entity_name != $item_name) {
-                            // Подключение к DBpedia
-                            $sparql_client = new SparqlClient();
-                            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-                            // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
-                            $query = "PREFIX db: <http://dbpedia.org/resource/>
-                                SELECT db:$candidate_entity_name ?property db:$item
-                                FROM <http://dbpedia.org>
-                                WHERE { db:$candidate_entity_name ?property db:$item }
-                                LIMIT 1";
-                            $rows = $sparql_client->query($query, 'rows');
-                            $error = $sparql_client->getErrors();
-                            // Если нет ошибок при запросе и есть результат запроса
-                            if (!$error && $rows['result']['rows'])
-                                $distance++;
-                        }
+                        if ($candidate_entity_name != $item_name)
+                            if ($ce_key == 0)
+                                // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
+                                $query = "PREFIX db: <http://dbpedia.org/resource/>
+                                    SELECT COUNT(*) as ?Triples
+                                    FROM <http://dbpedia.org>
+                                    WHERE { db:$candidate_entity_name ?property db:$item ";
+                            else
+                                $query .= "UNION { db:$candidate_entity_name ?property db:$item }";
                     }
+                $query .= "}";
+                $rows = $sparql_client->query($query, 'rows');
+                $error = $sparql_client->getErrors();
+                // Если нет ошибок при запросе и есть результат запроса
+                if (!$error && $rows['result']['rows'])
+                    $distance = $rows['result']['rows'][0]['Triples'];
+
+                // Запить журнала
+                $this->log .= 'Запрос поиска связей для сущности-кандидата ' . $candidate_entity_name . ': ' .
+                    $rows['query_time'] . PHP_EOL;
+                $this->all_query_time += $rows['query_time'];
+
                 // Формирование массива ранжированных сущностей кандидатов по связям
                 array_push($relationship_distance_array, [$candidate_entity_name, $distance]);
             }
+
+            $this->log .= PHP_EOL;
+
             // Формирование массива ранжированных сущностей кандидатов для текущего значения ячейки
             $ranked_candidate_entities[$key] = $relationship_distance_array;
         }
@@ -321,6 +374,12 @@ class CanonicalTableAnnotator
                 }";
             $rows = $sparql_client->query($query, 'rows');
             $error = $sparql_client->getErrors();
+
+            // Запить журнала
+            $this->log .= 'Запрос для определения глубины связи для ' . $candidate_entity_name . ': ' .
+                $rows['query_time'] . PHP_EOL;
+            $this->all_query_time += $rows['query_time'];
+
             // Вычисляемый ранг (оценка) для сущности кандидата
             $rank = 0;
             // Если нет ошибок при запросе, есть результат запроса и глубина не 0, то
@@ -362,6 +421,12 @@ class CanonicalTableAnnotator
                 }";
             $rows = $sparql_client->query($query, 'rows');
             $error = $sparql_client->getErrors();
+
+            // Запить журнала
+            $this->log .= 'Запрос для поиска всех классов для ' . $candidate_entity_name . ': ' .
+                $rows['query_time'] . PHP_EOL;
+            $this->all_query_time += $rows['query_time'];
+
             // Если нет ошибок при запросе и есть результат запроса
             if (!$error && $rows['result']['rows']) {
                 $rank = 100;
@@ -391,6 +456,102 @@ class CanonicalTableAnnotator
     }
 
     /**
+     * Определение сходства сущностей кандидатов по семантической близости.
+     *
+     * @param $all_candidate_entities - массив для всех массивов сущностей кандидатов
+     * @return array - ранжированный массив сущностей кандидатов
+     */
+    public function getSemanticSimilarityDistance($all_candidate_entities)
+    {
+        // Массив ранжированных сущностей кандидатов
+        $ranked_candidate_entities = array();
+        // Сравнение классов сущностей кандидатов между собой
+        foreach ($all_candidate_entities as $current_entry_name => $current_candidate_entities) {
+            $global_ranked_classes = array();
+            foreach ($all_candidate_entities as $comparative_entry_name => $comparative_candidate_entities) {
+                if ($current_entry_name != $comparative_entry_name)
+                    foreach ($current_candidate_entities as $current_entity_name => $current_parent_classes) {
+                        $ranked_classes = array();
+                        foreach ($comparative_candidate_entities as $comparative_entity_name => $comparative_parent_classes) {
+                            if ($current_parent_classes != false && $comparative_parent_classes != false) {
+                                $selected_class = '';
+                                $global_min = 100;
+                                foreach ($current_parent_classes as $current_parent_class) {
+                                    $min_distance = 100;
+                                    foreach ($comparative_parent_classes as $comparative_parent_class) {
+                                        // Удаление адреса URI у классов
+                                        $current_parent_class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION, '',
+                                            $current_parent_class);
+                                        $comparative_parent_class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION, '',
+                                            $comparative_parent_class);
+                                        // Вычисление расстояния Левенштейна между названиями классов
+                                        $distance = levenshtein($current_parent_class_name,
+                                            $comparative_parent_class_name);
+                                        // Определение самого минимального расстояния
+                                        if ($min_distance > $distance)
+                                            $min_distance = $distance;
+                                    }
+                                    // Выбор класса с самым минимальным расстоянием Левенштейна
+                                    if ($global_min > $min_distance) {
+                                        $global_min = $min_distance;
+                                        $selected_class = $current_parent_class;
+                                    }
+                                }
+                                // Формирование локального массива ранжированных классов
+                                if (array_key_exists($selected_class, $ranked_classes))
+                                    $ranked_classes[$selected_class] += 1;
+                                else
+                                    $ranked_classes[$selected_class] = 1;
+                            }
+                        }
+                        // Формирование глобального массива ранжированных классов для всех сущностей кандидатов
+                        if (array_key_exists($current_entity_name, $global_ranked_classes)) {
+                            foreach ($ranked_classes as $key_mc => $value_mc)
+                                if (array_key_exists($key_mc, $global_ranked_classes[$current_entity_name]))
+                                    $global_ranked_classes[$current_entity_name][$key_mc] += $value_mc;
+                                else
+                                    $global_ranked_classes[$current_entity_name][$key_mc] = $value_mc;
+                        } else
+                            $global_ranked_classes[$current_entity_name] = $ranked_classes;
+                        // Сортировка массива ранжированных классов по убыванию
+                        arsort($global_ranked_classes[$current_entity_name]);
+                    }
+            }
+            $max = 0;
+            $coefficient = 0;
+            $global_ranks = array();
+            // Присвоение ранга для каждой сущности кандидата
+            foreach ($global_ranked_classes as $candidate_entity => $ranked_classes)
+                if (reset($ranked_classes) != 0) {
+                    $global_ranks[$candidate_entity] = reset($ranked_classes);
+                    if ($max < $global_ranks[$candidate_entity])
+                        $max = $global_ranks[$candidate_entity];
+                } else
+                    $global_ranks[$candidate_entity] = 0;
+            // Выбор коэффициента
+            if ($max < 10 && $max >= 1)
+                $coefficient = 10;
+            if ($max < 100 && $max >= 10)
+                $coefficient = 100;
+            if ($max < 1000 && $max >= 100)
+                $coefficient = 1000;
+            if ($max < 10000 && $max >= 1000)
+                $coefficient = 10000;
+            // Расчет результирующего ранга для сущностей кандидатов
+            foreach ($global_ranks as $candidate_entity => $rank)
+                $global_ranks[$candidate_entity] = $rank / $coefficient;
+            // Формирование массива ранжированных сущностей кандидатов
+            $ranked_candidate_entities[$current_entry_name] = $global_ranks;
+
+            // Запить журнала
+            $this->log .= 'Сформирован массив ранжированных сущностей кандидатов для ' .
+                $current_entry_name . ': ' . PHP_EOL;
+        }
+
+        return $ranked_candidate_entities;
+    }
+
+    /**
      * Аннотирование столбцов "RowHeading" и "ColumnHeading" содержащих значения заголовков исходной таблицы.
      *
      * @param $data - данные каноничечкой таблицы
@@ -413,6 +574,9 @@ class CanonicalTableAnnotator
         $all_candidate_entities = array();
         // Массив для ранжированных сущностей кандидатов по расстоянию Левенштейна
         $levenshtein_distance_candidate_entities = array();
+
+        $this->log .= '**************************' . PHP_EOL;
+
         // Обход массива корректных значений столбцов для поиска классов и концептов
         foreach ($formed_heading_labels as $key => $heading_label) {
             // Формирование набора сущностей кандидатов (классов и объектов)
@@ -426,11 +590,23 @@ class CanonicalTableAnnotator
                 $all_candidate_entities[$key] = $candidate_entities;
             }
         }
+
+        $this->log .= PHP_EOL;
+
         // Нахождение связей между сущностями кандидатов
-        $relationship_distance_candidate_entities = $this->getRelationshipDistance($all_candidate_entities);
+        $relationship_distance_candidate_entities = $levenshtein_distance_candidate_entities;//$this->getRelationshipDistance($all_candidate_entities);
         // Получение агрегированных оценок (рангов) для сущностей кандидатов
         $ranked_candidate_entities = $this->getAggregatedRanks($levenshtein_distance_candidate_entities, 1,
             $relationship_distance_candidate_entities, 1);
+
+        $this->log .= '**************************' . PHP_EOL;
+        $this->log .= 'Общее время на запросы для ' . $heading_title . ': ' .
+            $this->all_query_time . ' (сек.)' . PHP_EOL;
+        $this->log .= 'Общее время на запросы для ' . $heading_title . ': ' .
+            $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
+        $this->log .= '**************************' . PHP_EOL;
+        $this->data_entities = $this->log;
+
         // Сохранение результатов аннотирования для столбцов с заголовками
         if ($heading_title == self::ROW_HEADING_TITLE)
             $this->row_heading_entities = $ranked_candidate_entities;
@@ -469,6 +645,9 @@ class CanonicalTableAnnotator
                             }
                 }
         $concept_query_results = array();
+
+        $this->log .= '**************************' . PHP_EOL;
+
         // Обход массива корректных значений столбца с данными для поиска подходящих объектов или классов
         foreach ($formed_data_entries as $key => $entry)
             foreach ($formed_ner_labels as $ner_key => $ner_label)
@@ -495,12 +674,23 @@ class CanonicalTableAnnotator
                         } LIMIT 1";
                     $rows = $sparql_client->query($query, 'rows');
                     $error = $sparql_client->getErrors();
+
+                    // Запить журнала
+                    $this->log .= 'Запрос поиска точного совпадения с объектом <' . $ner_resource . '>: ' .
+                        $rows['query_time'] . PHP_EOL;
+                    $this->all_query_time += $rows['query_time'];
+
                     // Если нет ошибок при запросе и есть результат запроса
                     if (!$error && $rows['result']['rows']) {
                         array_push($concept_query_results, $rows);
                         $this->data_entities[$key] = $rows['result']['rows'][0]['subject'];
                     }
                 }
+
+        $this->log .= '**************************' . PHP_EOL;
+        $this->log .= 'Общее время на запросы для DATA: ' . $this->all_query_time . ' (сек.)' . PHP_EOL;
+        $this->log .= 'Общее время на запросы для DATA: ' . $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
+        $this->log .= '**************************' . PHP_EOL;
 
         return $concept_query_results;
     }
@@ -520,7 +710,7 @@ class CanonicalTableAnnotator
         // Цикл по всем ячейкам канонической таблицы
         foreach ($data as $row_number => $row) {
             $current_data_value = '';
-            $row_heading_labels = array();
+            $heading_labels = array();
             foreach ($row as $heading => $value) {
                 // Если столбец с данными
                 if ($heading == self::DATA_TITLE) {
@@ -544,11 +734,11 @@ class CanonicalTableAnnotator
                     $string_array = explode(" | ", $value);
                     foreach ($string_array as $key => $string)
                         // Формирование массива корректных значений ячеек заголовков для строки
-                        array_push($row_heading_labels, str_replace(' ', '', $string));
+                        array_push($heading_labels, str_replace(' ', '', $string));
                 }
             }
             // Формирование массива корректных значений ячеек заголовков таблицы
-            $formed_heading_labels[$current_data_value] = $row_heading_labels;
+            $formed_heading_labels[$current_data_value] = $heading_labels;
         }
         $concept_query_results = array();
 
@@ -562,31 +752,63 @@ class CanonicalTableAnnotator
         $heading_distance_candidate_entities = array();
         // Обход массива корректных значений столбца данных для поиска референтных сущностей
         foreach ($formed_data_entries as $key => $entry) {
+
+            $this->log .= '**************************' . PHP_EOL;
+
             // Формирование набора сущностей кандидатов
             $candidate_entities = $this->getCandidateEntities($entry, self::DBPEDIA_RESOURCE_SECTION);
+
+            $this->log .= PHP_EOL;
+
             // Если набор сущностей кандидатов сформирован
             if ($candidate_entities) {
-//                // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
-//                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($entry,
-//                    $candidate_entities);
-//                // Обход массива корректных значений NER-меток для столбца данных
-//                foreach ($formed_ner_labels as $ner_key => $ner_label)
-//                    if ($key == $ner_key)
-//                        // Вычисление сходства между сущностями из набора кандидатов и классом, определенного NER-меткой
-//                        $ner_class_distance_candidate_entities[$key] = $this->getNerClassDistance($ner_label,
-//                            $candidate_entities);
+                // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
+                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($entry,
+                    $candidate_entities);
+                // Обход массива корректных значений NER-меток для столбца данных
+                foreach ($formed_ner_labels as $ner_key => $ner_label)
+                    if ($key == $ner_key)
+                        // Вычисление сходства между сущностями из набора кандидатов и классом, определенного NER-меткой
+                        $ner_class_distance_candidate_entities[$key] = $this->getNerClassDistance($ner_label,
+                            $candidate_entities);
+
+                $this->log .= PHP_EOL;
+
                 // Обход массива всех заголовков таблицы
                 foreach ($formed_heading_labels as $heading_key => $formed_row_heading_labels)
-                    if ($key == $heading_key)
+                    if ($key == $heading_key) {
                         // Вычисление сходства между сущностями из набора кандидатов по заголовкам
                         $heading_distance_candidate_entities[$key] = $this->getHeadingDistance(
                             $formed_row_heading_labels, $candidate_entities);
-                // Добавление массива сущностей кандидатов в общий набор
-                $all_candidate_entities[$key] = $candidate_entities;
+                    }
+
+                $this->log .= PHP_EOL;
+
+                // Массив сущностей кандидатов с их родительскими классами
+                $candidate_entities_with_classes = array();
+                // Обход сущностей кандидатов
+                foreach ($candidate_entities as $candidate_entity) {
+                    // Получение родительских классов для текущей сущности кандидата
+                    $parent_classes = $this->getParentClasses($candidate_entity);
+                    // Формирование массива сущностей кандидатов с их родительскими классами
+                    $candidate_entities_with_classes[$candidate_entity] = $parent_classes;
+                }
+                // Добавление массива сущностей кандидатов с их классами в общий набор
+                $all_candidate_entities[$key] = $candidate_entities_with_classes;
             }
         }
+        // Вычисление сходства между сущностями из набора кандидатов по семантической близости
+        $semantic_similarity_distance_candidate_entities = $this->getSemanticSimilarityDistance($all_candidate_entities);
+        // Массив для ранжированных сущностей кандидатов по сходству контекста упоминания сущности
+        $context_similarity_distance_candidate_entities = array();
+
+        $this->log .= '**************************' . PHP_EOL;
+        $this->log .= 'Общее время на запросы: ' . $this->all_query_time . ' (сек.)' . PHP_EOL;
+        $this->log .= 'Общее время на запросы: ' . $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
+        $this->log .= '**************************';
+
         // Сохранение результатов аннотирования для столбца с данными
-        $this->data_entities = $heading_distance_candidate_entities;
+        $this->data_entities = $this->log;
 
         return $concept_query_results;
     }
