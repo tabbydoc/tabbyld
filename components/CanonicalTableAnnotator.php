@@ -134,7 +134,7 @@ class CanonicalTableAnnotator
                 WHERE {
                     ?subject ?property ?object . FILTER regex(str(?subject), '$value', 'i') .
                     FILTER(strstarts(str(?subject), '$section'))
-                } LIMIT 100";
+                } LIMIT 10";
         else
             // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
             $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
@@ -145,7 +145,7 @@ class CanonicalTableAnnotator
                 WHERE { ?subject a ?object . FILTER ( regex(str(?subject), '$value', 'i') &&
                     ( (strstarts(str(?subject), str(dbo:)) && (str(?object) = str(owl:Class))) ||
                     (strstarts(str(?subject), str(db:)) && (str(?object) = str(owl:Thing))) ) )
-            } LIMIT 100";
+            } LIMIT 10";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
 
@@ -218,7 +218,7 @@ class CanonicalTableAnnotator
             // Вычисление расстояния Левенштейна между входным значением и текущим названием сущности кандидата
             $distance = levenshtein($input_value, $candidate_entity_name);
             // Формирование массива ранжированных сущностей кандидатов
-            array_push($ranked_candidate_entities, [$candidate_entity_name, $distance]);
+            array_push($ranked_candidate_entities, [$candidate_entity, $distance]);
         }
 
         return $ranked_candidate_entities;
@@ -279,7 +279,7 @@ class CanonicalTableAnnotator
                 $this->all_query_time += $rows['query_time'];
 
                 // Формирование массива ранжированных сущностей кандидатов по связям
-                array_push($relationship_distance_array, [$candidate_entity_name, $distance]);
+                array_push($relationship_distance_array, [$candidate_entity, $distance]);
             }
 
             $this->log .= PHP_EOL;
@@ -292,7 +292,7 @@ class CanonicalTableAnnotator
     }
 
     /**
-     * Получение агрегированных оценок (рангов) для сущностей кандидатов.
+     * Получение агрегированных оценок (рангов) сущностей кандидатов для заголовков таблиц.
      *
      * @param $levenshtein_distance_candidate_entities - ранжированный массив сущностей кандидатов по расстоянию Левенштейна
      * @param $a_weight_factor - весовой фактор А для определения важности оценки расстояния Левенштейна
@@ -300,8 +300,8 @@ class CanonicalTableAnnotator
      * @param $b_weight_factor - весовой фактор B для определения важности оценки по связям
      * @return array - ранжированный массив сущностей кандидатов с агрегированными оценками
      */
-    public function getAggregatedRanks($levenshtein_distance_candidate_entities, $a_weight_factor,
-                                       $relationship_distance_candidate_entities, $b_weight_factor)
+    public function getAggregatedHeadingRanks($levenshtein_distance_candidate_entities, $a_weight_factor,
+                                              $relationship_distance_candidate_entities, $b_weight_factor)
     {
         $ranked_candidate_entities = array();
         // Обход массива с наборами ранжированных сущностей кандидатов по расстоянию Левенштейна
@@ -312,7 +312,7 @@ class CanonicalTableAnnotator
             foreach ($relationship_distance_candidate_entities as $rd_key => $rd_items)
                 if ($ld_key == $rd_key)
                     foreach ($ld_items as $levenshtein_distance_candidate_entity)
-                        foreach ($rd_items as $rd_key => $relationship_distance_candidate_entity)
+                        foreach ($rd_items as $relationship_distance_candidate_entity)
                             if ($levenshtein_distance_candidate_entity[0] ==
                                 $relationship_distance_candidate_entity[0]) {
                                 // Нормализация рангов (расстояния) Левенштейна
@@ -387,7 +387,7 @@ class CanonicalTableAnnotator
             if (!$error && $rows['result']['rows'] && $rows['result']['rows'][0]['depth'] != 0)
                 $rank = 1 / $rows['result']['rows'][0]['depth'];
             // Формирование массива ранжированных сущностей кандидатов
-            array_push($ranked_candidate_entities, [$candidate_entity_name, $rank]);
+            array_push($ranked_candidate_entities, [$candidate_entity, $rank]);
         }
 
         return $ranked_candidate_entities;
@@ -448,7 +448,7 @@ class CanonicalTableAnnotator
                         $rank = $distance;
                 }
                 // Формирование массива ранжированных сущностей кандидатов
-                array_push($ranked_candidate_entities, [$candidate_entity_name, $rank]);
+                array_push($ranked_candidate_entities, [$candidate_entity, $rank]);
             }
         }
 
@@ -463,8 +463,8 @@ class CanonicalTableAnnotator
      */
     public function getSemanticSimilarityDistance($all_candidate_entities)
     {
-        // Массив ранжированных сущностей кандидатов
-        $ranked_candidate_entities = array();
+        // Массив всех ранжированных сущностей кандидатов
+        $global_ranked_candidate_entities = array();
         // Сравнение классов сущностей кандидатов между собой
         foreach ($all_candidate_entities as $current_entry_name => $current_candidate_entities) {
             $global_ranked_classes = array();
@@ -517,38 +517,48 @@ class CanonicalTableAnnotator
                         arsort($global_ranked_classes[$current_entity_name]);
                     }
             }
-            $max = 0;
+            $max_rank = 0;
             $coefficient = 0;
-            $global_ranks = array();
+            // Массив сущностей кандидатов с промежуточными значениями рангов
+            $intermediate_candidate_entities = array();
             // Присвоение ранга для каждой сущности кандидата
-            foreach ($global_ranked_classes as $candidate_entity => $ranked_classes)
-                if (reset($ranked_classes) != 0) {
-                    $global_ranks[$candidate_entity] = reset($ranked_classes);
-                    if ($max < $global_ranks[$candidate_entity])
-                        $max = $global_ranks[$candidate_entity];
+            foreach ($global_ranked_classes as $candidate_entity => $class_ranks) {
+                // Получение первого ранга класса (максимального из всех рангов классов)
+                $current_rank = reset($class_ranks);
+                // Если ранг не равен 0
+                if ($current_rank != 0) {
+                    // Формирование массива сущностей кандидатов с промежуточными значениями рангов
+                    array_push($intermediate_candidate_entities, [$candidate_entity, $current_rank]);
+                    // Запоминание максимального ранга
+                    if ($max_rank < $current_rank)
+                        $max_rank = $current_rank;
                 } else
-                    $global_ranks[$candidate_entity] = 0;
+                    array_push($intermediate_candidate_entities, [$candidate_entity, 0]);
+            }
             // Выбор коэффициента
-            if ($max < 10 && $max >= 1)
+            if ($max_rank < 10 && $max_rank >= 1)
                 $coefficient = 10;
-            if ($max < 100 && $max >= 10)
+            if ($max_rank < 100 && $max_rank >= 10)
                 $coefficient = 100;
-            if ($max < 1000 && $max >= 100)
+            if ($max_rank < 1000 && $max_rank >= 100)
                 $coefficient = 1000;
-            if ($max < 10000 && $max >= 1000)
+            if ($max_rank < 10000 && $max_rank >= 1000)
                 $coefficient = 10000;
+            // Массив сущностей кандидатов с результирующими рангами
+            $ranked_candidate_entities = array();
             // Расчет результирующего ранга для сущностей кандидатов
-            foreach ($global_ranks as $candidate_entity => $rank)
-                $global_ranks[$candidate_entity] = $rank / $coefficient;
-            // Формирование массива ранжированных сущностей кандидатов
-            $ranked_candidate_entities[$current_entry_name] = $global_ranks;
+            foreach ($intermediate_candidate_entities as $intermediate_candidate_entity)
+                array_push($ranked_candidate_entities, [$intermediate_candidate_entity[0],
+                    ($intermediate_candidate_entity[1] / $coefficient)]);
+            // Формирование массива всех ранжированных сущностей кандидатов
+            $global_ranked_candidate_entities[$current_entry_name] = $ranked_candidate_entities;
 
             // Запить журнала
             $this->log .= 'Сформирован массив ранжированных сущностей кандидатов для ' .
                 $current_entry_name . ': ' . PHP_EOL;
         }
 
-        return $ranked_candidate_entities;
+        return $global_ranked_candidate_entities;
     }
 
     /**
@@ -627,6 +637,12 @@ class CanonicalTableAnnotator
             }";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
+
+        // Запить журнала
+        $this->log .= 'Запрос поиска контекста для ' . $candidate_entity . ': ' .
+            $rows['query_time'] . PHP_EOL;
+        $this->all_query_time += $rows['query_time'];
+
         // Если нет ошибок при запросе и есть результат запроса
         if (!$error && $rows['result']['rows']) {
             // Формирование массива
@@ -662,10 +678,10 @@ class CanonicalTableAnnotator
             $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION);
             // Определение контекста текущей сущности кандидата
             $current_entity_context = $this->getEntityContext($candidate_entity);
+            // Установка первоначального ранга
+            $rank = 0;
             // Если контекст сущности кандидата определен
-            if ($current_entity_context) {
-                // Установка первоначального ранга
-                $ranked_candidate_entities[$candidate_entity] = 0;
+            if ($current_entity_context)
                 // Сравнение контекста значения ячейки с контекстом сущности кандидата
                 foreach ($current_entry_context as $entry_name)
                     foreach ($current_entity_context as $entity) {
@@ -673,10 +689,98 @@ class CanonicalTableAnnotator
                         $entity_name = str_replace($URIs, '', $entity);
                         // Если названия концептов из двух контекстов совпадают (расстояние Левенштейна между ними = 0)
                         if (levenshtein($entry_name, $entity_name) == 0)
-                            // Формирование массива ранжированных сущностей кандидатов (инкремент текущего ранга)
-                            $ranked_candidate_entities[$candidate_entity] += 1;
+                            // Инкремент текущего ранга
+                            $rank += 1;
                     }
+            // Формирование массива ранжированных сущностей кандидатов
+            array_push($ranked_candidate_entities, [$candidate_entity, $rank]);
+        }
+
+        return $ranked_candidate_entities;
+    }
+
+    /**
+     * Получение агрегированных оценок (рангов) сущностей кандидатов для столбца с данными (именоваными сущностями).
+     *
+     * @param $levenshtein_distance_candidate_entities - ранжированный массив сущностей кандидатов по расстоянию Левенштейна
+     * @param $a_weight_factor - весовой фактор А для определения важности оценки расстояния Левенштейна
+     * @param $ner_class_distance_candidate_entities - ранжированный массив сущностей кандидатов по классам, определенных NER-метками
+     * @param $b_weight_factor - весовой фактор B для определения важности оценки сходства по классам, определенных NER-метками
+     * @param $heading_distance_candidate_entities - ранжированный массив сущностей кандидатов по заголовкам
+     * @param $c_weight_factor - весовой фактор С для определения важности оценки сходства по заголовкам
+     * @param $semantic_similarity_distance_candidate_entities - ранжированный массив сущностей кандидатов по семантической близости
+     * @param $d_weight_factor - весовой фактор D для определения важности оценки сходства по семантической близости
+     * @param $context_similarity_distance_candidate_entities - ранжированный массив сущностей кандидатов по контексту упоминания сущности
+     * @param $e_weight_factor - весовой фактор E для определения важности оценки сходства по контексту упоминания сущности
+     * @return array - ранжированный массив сущностей кандидатов с агрегированными оценками
+     */
+    public function getAggregatedNamedEntityRanks($levenshtein_distance_candidate_entities, $a_weight_factor,
+                                                  $ner_class_distance_candidate_entities, $b_weight_factor,
+                                                  $heading_distance_candidate_entities, $c_weight_factor,
+                                                  $semantic_similarity_distance_candidate_entities, $d_weight_factor,
+                                                  $context_similarity_distance_candidate_entities, $e_weight_factor)
+    {
+        $ranked_candidate_entities = array();
+        // Обход массива с наборами ранжированных сущностей кандидатов по расстоянию Левенштейна
+        foreach ($levenshtein_distance_candidate_entities as $ld_entry => $ld_entities) {
+            // Массив для хранения агрегированных оценок
+            $full_distance_array = array();
+            //
+            foreach ($ld_entities as $levenshtein_distance_candidate_entity) {
+                // Текущий ранг сущности кандидата
+                $full_rank = 0;
+                // Нормализация рангов (расстояния) Левенштейна
+                $normalized_levenshtein_distance = 1 - $levenshtein_distance_candidate_entity[1] / 100;
+                // Обход массива с наборами ранжированных сущностей кандидатов по классам, определенных NER-метками
+                foreach ($ner_class_distance_candidate_entities as $ncd_entry => $ncd_entities)
+                    if ($ld_entry == $ncd_entry)
+                        foreach ($ncd_entities as $ner_class_distance_candidate_entity)
+                            if ($levenshtein_distance_candidate_entity[0] ==
+                                $ner_class_distance_candidate_entity[0]) {
+                                // Вычисление агрегированной оценки (ранга)
+                                $full_rank = $a_weight_factor * $normalized_levenshtein_distance +
+                                    $b_weight_factor * $ner_class_distance_candidate_entity[1];
+                            }
+                // Обход массива с наборами ранжированных сущностей кандидатов по заголовкам
+                foreach ($heading_distance_candidate_entities as $hd_entry => $hd_entities)
+                    if ($ld_entry == $hd_entry)
+                        foreach ($hd_entities as $heading_distance_candidate_entity)
+                            if ($levenshtein_distance_candidate_entity[0] ==
+                                $heading_distance_candidate_entity[0]) {
+                                // Вычисление агрегированной оценки (ранга)
+                                $full_rank += $c_weight_factor * $heading_distance_candidate_entity[1];
+                            }
+                // Обход массива с наборами ранжированных сущностей кандидатов по семантической близости
+                foreach ($semantic_similarity_distance_candidate_entities as $ssd_entry => $ssd_entities)
+                    if ($ld_entry == $ssd_entry)
+                        foreach ($ssd_entities as $semantic_similarity_distance_candidate_entity)
+                            if ($levenshtein_distance_candidate_entity[0] ==
+                                $semantic_similarity_distance_candidate_entity[0]) {
+                                // Вычисление агрегированной оценки (ранга)
+                                $full_rank += $d_weight_factor * $semantic_similarity_distance_candidate_entity[1];
+                            }
+                // Обход массива с наборами ранжированных сущностей кандидатов по контексту упоминания сущности
+                foreach ($context_similarity_distance_candidate_entities as $csd_entry => $csd_entities)
+                    if ($ld_entry == $csd_entry)
+                        foreach ($csd_entities as $context_similarity_distance_candidate_entity)
+                            if ($levenshtein_distance_candidate_entity[0] ==
+                                $context_similarity_distance_candidate_entity[0]) {
+                                // Вычисление агрегированной оценки (ранга)
+                                $full_rank += $e_weight_factor * $context_similarity_distance_candidate_entity[1];
+                            }
+                // Формирование массива ранжированных сущностей кандидатов с агрегированной оценкой
+                array_push($full_distance_array, [$levenshtein_distance_candidate_entity[0], $full_rank]);
             }
+            // Сортировка массива ранжированных сущностей кандидатов по убыванию их ранга
+            for ($i = 0; $i < count($full_distance_array); $i++)
+                for ($j = $i + 1; $j < count($full_distance_array); $j++)
+                    if ($full_distance_array[$i][1] <= $full_distance_array[$j][1]) {
+                        $temp = $full_distance_array[$j];
+                        $full_distance_array[$j] = $full_distance_array[$i];
+                        $full_distance_array[$i] = $temp;
+                    }
+            // Формирование массива ранжированных сущностей кандидатов для текущего значения ячейки
+            $ranked_candidate_entities[$ld_entry] = $full_distance_array;
         }
 
         return $ranked_candidate_entities;
@@ -725,9 +829,9 @@ class CanonicalTableAnnotator
         $this->log .= PHP_EOL;
 
         // Нахождение связей между сущностями кандидатов
-        $relationship_distance_candidate_entities = $levenshtein_distance_candidate_entities;//$this->getRelationshipDistance($all_candidate_entities);
+        $relationship_distance_candidate_entities = $this->getRelationshipDistance($all_candidate_entities);
         // Получение агрегированных оценок (рангов) для сущностей кандидатов
-        $ranked_candidate_entities = $this->getAggregatedRanks($levenshtein_distance_candidate_entities, 1,
+        $ranked_candidate_entities = $this->getAggregatedHeadingRanks($levenshtein_distance_candidate_entities, 1,
             $relationship_distance_candidate_entities, 1);
 
         $this->log .= '**************************' . PHP_EOL;
@@ -936,6 +1040,11 @@ class CanonicalTableAnnotator
         }
         // Вычисление сходства между сущностями из набора кандидатов по семантической близости
         $semantic_similarity_distance_candidate_entities = $this->getSemanticSimilarityDistance($all_candidate_entities);
+
+        // Получение агрегированных оценок (рангов) для сущностей кандидатов
+        $ranked_candidate_entities = $this->getAggregatedNamedEntityRanks($levenshtein_distance_candidate_entities, 1,
+            $ner_class_distance_candidate_entities, 1, $heading_distance_candidate_entities, 1,
+            $semantic_similarity_distance_candidate_entities, 1, $context_similarity_distance_candidate_entities, 1);
 
         $this->log .= '**************************' . PHP_EOL;
         $this->log .= 'Общее время на запросы: ' . $this->all_query_time . ' (сек.)' . PHP_EOL;
