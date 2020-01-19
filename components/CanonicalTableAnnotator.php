@@ -18,10 +18,11 @@ class CanonicalTableAnnotator
     const TIME_NER_LABEL = 'TIME';
     const MONEY_NER_LABEL = 'MONEY';
     const PERCENT_NER_LABEL = 'PERCENT';
-    const UNDEFINED_NER_LABEL = 'UNDEFINED';
+    const NONE_NER_LABEL = 'NONE';
     const LOCATION_NER_LABEL = 'LOCATION';
     const PERSON_NER_LABEL = 'PERSON';
     const ORGANIZATION_NER_LABEL = 'ORGANIZATION';
+    const MISC_NER_LABEL = 'MISC';
 
     // Названия (адреса) классов и экземпляров классов в онтологии DBpedia соответствующие меткам NER
     const LOCATION_ONTOLOGY_CLASS = 'http://dbpedia.org/ontology/Location';
@@ -48,10 +49,6 @@ class CanonicalTableAnnotator
 
     public $current_annotation_strategy_type; // Текущий тип стратегии аннотирования
 
-    public $data_entities = array();           // Массив найденных концептов для столбца с данными "DATA"
-    public $row_heading_entities = array();    // Массив найденных сущностей для столбца "RowHeading"
-    public $column_heading_entities = array(); // Массив найденных сущностей для столбца "ColumnHeading"
-
     // Массив кандидатов родительских классов для концептов в "DATA"
     public $parent_data_class_candidates = array();
     // Массив кандидатов родительских классов для сущностей в "RowHeading"
@@ -65,8 +62,8 @@ class CanonicalTableAnnotator
     // Массив сс определенными родительскими классами для сущностей в "ColumnHeading"
     public $parent_column_heading_classes = array();
 
-    public $log = '';
-    public $all_query_time = 0;
+    public $log = '';           // Текст с записью логов хода выполнения аннотации таблицы
+    public $all_query_time = 0; // Общее время выполнения всех SPARQL-запросов
 
     /**
      * Идентификация типа таблицы по столбцу DATA (блока данных).
@@ -109,8 +106,8 @@ class CanonicalTableAnnotator
             self::MONEY_NER_LABEL, self::PERCENT_NER_LABEL)))
             $this->current_annotation_strategy_type = self::LITERAL_STRATEGY;
         // Если в столбце DATA содержаться сущности, то устанавливаем стратегию аннотирования именованных сущностей
-        if (in_array($global_ner_label, array(self::UNDEFINED_NER_LABEL, self::LOCATION_NER_LABEL,
-            self::PERSON_NER_LABEL, self::ORGANIZATION_NER_LABEL)))
+        if (in_array($global_ner_label, array(self::NONE_NER_LABEL, self::LOCATION_NER_LABEL,
+            self::PERSON_NER_LABEL, self::ORGANIZATION_NER_LABEL, self::MISC_NER_LABEL)))
             $this->current_annotation_strategy_type = self::NAMED_ENTITY_STRATEGY;
     }
 
@@ -134,7 +131,7 @@ class CanonicalTableAnnotator
                 WHERE {
                     ?subject ?property ?object . FILTER regex(str(?subject), '$value', 'i') .
                     FILTER(strstarts(str(?subject), '$section'))
-                } LIMIT 10";
+                } LIMIT 100";
         else
             // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
             $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
@@ -145,7 +142,7 @@ class CanonicalTableAnnotator
                 WHERE { ?subject a ?object . FILTER ( regex(str(?subject), '$value', 'i') &&
                     ( (strstarts(str(?subject), str(dbo:)) && (str(?object) = str(owl:Class))) ||
                     (strstarts(str(?subject), str(db:)) && (str(?object) = str(owl:Thing))) ) )
-            } LIMIT 10";
+            } LIMIT 100";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
 
@@ -840,13 +837,6 @@ class CanonicalTableAnnotator
         $this->log .= 'Общее время на запросы для ' . $heading_title . ': ' .
             $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
         $this->log .= '**************************' . PHP_EOL;
-        $this->data_entities = $this->log;
-
-        // Сохранение результатов аннотирования для столбцов с заголовками
-        if ($heading_title == self::ROW_HEADING_TITLE)
-            $this->row_heading_entities = $ranked_candidate_entities;
-        if ($heading_title == self::COLUMN_HEADING_TITLE)
-            $this->column_heading_entities = $ranked_candidate_entities;
 
         return $ranked_candidate_entities;
     }
@@ -879,7 +869,8 @@ class CanonicalTableAnnotator
                                     $formed_ner_labels[$value] = $ner_value;
                             }
                 }
-        $concept_query_results = array();
+        // Массив ранжированных сущностей для столбца с данными "DATA"
+        $ranked_candidate_entities = array();
 
         $this->log .= '**************************' . PHP_EOL;
 
@@ -910,16 +901,16 @@ class CanonicalTableAnnotator
                     $rows = $sparql_client->query($query, 'rows');
                     $error = $sparql_client->getErrors();
 
+                    // Если нет ошибок при запросе и есть результат запроса
+                    if (!$error && $rows['result']['rows']) {
+                        // Формирование массива ранжированных сущностей
+                        $ranked_candidate_entities[$key] = $rows['result']['rows'][0]['subject'];
+                    }
+
                     // Запить журнала
                     $this->log .= 'Запрос поиска точного совпадения с объектом <' . $ner_resource . '>: ' .
                         $rows['query_time'] . PHP_EOL;
                     $this->all_query_time += $rows['query_time'];
-
-                    // Если нет ошибок при запросе и есть результат запроса
-                    if (!$error && $rows['result']['rows']) {
-                        array_push($concept_query_results, $rows);
-                        $this->data_entities[$key] = $rows['result']['rows'][0]['subject'];
-                    }
                 }
 
         $this->log .= '**************************' . PHP_EOL;
@@ -927,7 +918,7 @@ class CanonicalTableAnnotator
         $this->log .= 'Общее время на запросы для DATA: ' . $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
         $this->log .= '**************************' . PHP_EOL;
 
-        return $concept_query_results;
+        return $ranked_candidate_entities;
     }
 
     /**
@@ -975,8 +966,6 @@ class CanonicalTableAnnotator
             // Формирование массива корректных значений ячеек заголовков таблицы
             $formed_heading_labels[$current_data_value] = $heading_labels;
         }
-        // Массив с результатами запроса
-        $concept_query_results = array();
         // Массив для хранения массивов сущностей кандидатов
         $all_candidate_entities = array();
         // Массив для ранжированных сущностей кандидатов по расстоянию Левенштейна
@@ -1051,10 +1040,7 @@ class CanonicalTableAnnotator
         $this->log .= 'Общее время на запросы: ' . $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
         $this->log .= '**************************';
 
-        // Сохранение результатов аннотирования для столбца с данными
-        $this->data_entities = $this->log;
-
-        return $concept_query_results;
+        return $ranked_candidate_entities;
     }
 
     /**
