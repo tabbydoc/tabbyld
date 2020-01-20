@@ -179,8 +179,7 @@ class CanonicalTableAnnotator
             WHERE {
                 <$entity> ?property ?class
                 FILTER (strstarts(str(?class), 'http://dbpedia.org/ontology/'))
-            }
-            LIMIT 100";
+            } LIMIT 100";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
         // Если нет ошибок при запросе и есть результат запроса
@@ -259,9 +258,9 @@ class CanonicalTableAnnotator
                                 $query = "PREFIX db: <http://dbpedia.org/resource/>
                                     SELECT COUNT(*) as ?Triples
                                     FROM <http://dbpedia.org>
-                                    WHERE { db:$candidate_entity_name ?property db:$item ";
+                                    WHERE {{ db:$candidate_entity_name ?property db:$item_name }";
                             else
-                                $query .= "UNION { db:$candidate_entity_name ?property db:$item }";
+                                $query .= " UNION { db:$candidate_entity_name ?property db:$item_name }";
                     }
                 $query .= "}";
                 $rows = $sparql_client->query($query, 'rows');
