@@ -129,7 +129,7 @@ class CanonicalTableAnnotator
             $query = "SELECT ?subject ?property ?object
                 FROM <http://dbpedia.org>
                 WHERE {
-                    ?subject ?property ?object . FILTER regex(str(?subject), '$value', 'i') .
+                    ?subject ?property ?object . FILTER contains(str(?subject), '$value') .
                     FILTER(strstarts(str(?subject), '$section'))
                 } LIMIT 100";
         else
@@ -139,7 +139,7 @@ class CanonicalTableAnnotator
                 PREFIX owl: <http://www.w3.org/2002/07/owl#>
                 SELECT ?subject rdf:type ?object
                 FROM <http://dbpedia.org>
-                WHERE { ?subject a ?object . FILTER ( regex(str(?subject), '$value', 'i') &&
+                WHERE { ?subject a ?object . FILTER ( contains(str(?subject), '$value') &&
                     ( (strstarts(str(?subject), str(dbo:)) && (str(?object) = str(owl:Class))) ||
                     (strstarts(str(?subject), str(db:)) && (str(?object) = str(owl:Thing))) ) )
             } LIMIT 100";
@@ -797,9 +797,18 @@ class CanonicalTableAnnotator
             foreach ($item as $heading => $value)
                 if ($heading == $heading_title) {
                     $string_array = explode(" | ", $value);
-                    foreach ($string_array as $key => $string)
+                    foreach ($string_array as $key => $string) {
+                        // Удаление всех символов кроме букв и цифр из строки
+                        $normalized_string = preg_replace ('/[^a-zA-Zа-яА-Я0-9\s]/si','', $string);
+                        // Удаление пробелов из начала и конца строки
+                        $normalized_string = trim($normalized_string);
+                        // Все слова в строке начинаются с заглавной буквы
+                        $normalized_string = ucwords(mb_strtolower($normalized_string));
+                        // Замена пробелов знаком нижнего подчеркивания
+                        $normalized_string = str_replace(' ', '_', $normalized_string);
                         // Формирование массива корректных значений для поиска сущностей
-                        $formed_heading_labels[$string] = str_replace(' ', '', $string);
+                        $formed_heading_labels[$string] = $normalized_string;
+                    }
                 }
         // Массив для хранения массивов сущностей кандидатов
         $all_candidate_entities = array();
@@ -939,12 +948,18 @@ class CanonicalTableAnnotator
             foreach ($row as $heading => $value) {
                 // Если столбец с данными
                 if ($heading == self::DATA_TITLE) {
-                    // Формирование массива корректных значений ячеек столбца с данными
-                    $str = ucwords(strtolower($value));
-                    $correct_string = str_replace(' ', '', $str);
-                    $formed_data_entries[$value] = $correct_string;
                     // Запоминание текущего значения ячейки столбца с данными
                     $current_data_value = $value;
+                    // Удаление всех символов кроме букв и цифр из строки
+                    $normalized_value = preg_replace ('/[^a-zA-Zа-яА-Я0-9\s]/si','', $value);
+                    // Удаление пробелов из начала и конца строки
+                    $normalized_value = trim($normalized_value);
+                    // Все слова в строке начинаются с заглавной буквы
+                    $normalized_value = ucwords(mb_strtolower($normalized_value));
+                    // Замена пробелов знаком нижнего подчеркивания
+                    $normalized_value = str_replace(' ', '_', $normalized_value);
+                    // Формирование массива корректных значений ячеек столбца с данными
+                    $formed_data_entries[$value] = $normalized_value;
                     // Цикл по всем ячейкам столбца с NER-метками
                     foreach ($ner_labels as $ner_row_number => $ner_row)
                         foreach ($ner_row as $ner_key => $ner_value)
@@ -957,9 +972,18 @@ class CanonicalTableAnnotator
                 // Если столбцы с заголовками
                 if ($heading == self::ROW_HEADING_TITLE || $heading == self::COLUMN_HEADING_TITLE) {
                     $string_array = explode(" | ", $value);
-                    foreach ($string_array as $key => $string)
+                    foreach ($string_array as $key => $string) {
+                        // Удаление всех символов кроме букв и цифр из строки
+                        $normalized_string = preg_replace ('/[^a-zA-Zа-яА-Я0-9\s]/si','', $string);
+                        // Удаление пробелов из начала и конца строки
+                        $normalized_string = trim($normalized_string);
+                        // Все слова в строке начинаются с заглавной буквы
+                        $normalized_string = ucwords(mb_strtolower($normalized_string));
+                        // Замена пробелов знаком нижнего подчеркивания
+                        $normalized_string = str_replace(' ', '_', $normalized_string);
                         // Формирование массива корректных значений ячеек заголовков для строки
-                        array_push($heading_labels, str_replace(' ', '', $string));
+                        array_push($heading_labels, $normalized_string);
+                    }
                 }
             }
             // Формирование массива корректных значений ячеек заголовков таблицы
