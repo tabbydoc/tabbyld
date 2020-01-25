@@ -11,8 +11,6 @@ use yii\filters\AccessControl;
 use app\modules\main\models\LoginForm;
 use app\modules\main\models\ContactForm;
 use app\modules\main\models\ExcelFileForm;
-use moonland\phpexcel\Excel;
-use app\components\CanonicalTableAnnotator;
 
 /**
  * Default controller for the `main` module
@@ -150,44 +148,15 @@ class DefaultController extends Controller
         if (Yii::$app->request->isPost) {
             $file_form->excel_file = UploadedFile::getInstance($file_form, 'excel_file');
             if ($file_form->validate()) {
-                // Получение данных из файла XSLX
-                $data = Excel::import($file_form->excel_file->tempName, [
-                    'setFirstRecordAsKeys' => true,
-                    'setIndexSheetByName' => true,
-                    'getOnlySheet' => ExcelFileForm::CANONICAL_TABLE_SHEET,
-                ]);
-                // Получение данных о метках NER из файла XSLX
-                $ner_data = Excel::import($file_form->excel_file->tempName, [
-                    'setFirstRecordAsKeys' => true,
-                    'setIndexSheetByName' => true,
-                    'getOnlySheet' => ExcelFileForm::NER_SHEET,
-                ]);
-                // Создание объекта аннотатора таблиц
-                $annotator = new CanonicalTableAnnotator();
-                // Идентификация типа таблицы по столбцу DATA
-                $annotator->identifyTableType($data, $ner_data);
-                // Если установлена стратегия аннотирования литеральных значений
-                if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::LITERAL_STRATEGY) {
-                    // Аннотирование столбца "DATA"
-                    $data_concept_query_results = $annotator->annotateTableLiteralData($data, $ner_data);
-                    // Аннотирование столбца "RowHeading"
-                    $row_heading_concept_query_results = $annotator->annotateTableHeading(
-                        $data, CanonicalTableAnnotator::ROW_HEADING_TITLE);
-                    // Аннотирование столбца "ColumnHeading"
-                    $column_heading_concept_query_results = $annotator->annotateTableHeading(
-                        $data, CanonicalTableAnnotator::COLUMN_HEADING_TITLE);
-                    // Генерация RDF-документа в формате RDF/XML
-                    //$annotator->generateRDFXMLCode();
-                }
-                // Если установлена стратегия аннотирования именованных сущностей
-                if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
-                    // Аннотирование столбца "DATA"
-                    $data_concept_query_results = $annotator->annotateTableEntityData($data, $ner_data);
-                }
-                // Запоминание аннотированных сущностей
-                $data_entities = $annotator->data_entities;
-                $row_heading_entities = $annotator->row_heading_entities;
-                $column_heading_entities = $annotator->column_heading_entities;
+                // Сохранение загруженного файла таблицы
+                $file_form->excel_file->saveAs('uploads/test.xlsx');
+                // Выполнение команды интерпретации таблицы НЕ в фоновом режиме
+                exec('cd ' . Yii::$app->basePath . ' && php yii spreadsheet/annotate &');
+                // Вывод сообщения об успехной загрузке файла таблицы
+                Yii::$app->getSession()->setFlash('success',
+                    Yii::t('app', 'TABLE_ANNOTATION_MESSAGE_UPLOAD_TABLE'));
+
+                return $this->refresh();
             }
         }
 
