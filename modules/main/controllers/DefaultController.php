@@ -8,6 +8,7 @@ use yii\web\Controller;
 use yii\web\UploadedFile;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
+use vova07\console\ConsoleRunner;
 use app\modules\main\models\LoginForm;
 use app\modules\main\models\ContactForm;
 use app\modules\main\models\ExcelFileForm;
@@ -149,9 +150,10 @@ class DefaultController extends Controller
             $file_form->excel_file = UploadedFile::getInstance($file_form, 'excel_file');
             if ($file_form->validate()) {
                 // Сохранение загруженного файла таблицы
-                $file_form->excel_file->saveAs('uploads/test.xlsx');
-                // Выполнение команды интерпретации таблицы НЕ в фоновом режиме
-                exec('cd ' . Yii::$app->basePath . ' && php yii spreadsheet/annotate &');
+                $file_form->excel_file->saveAs('uploads/uploaded-table.xlsx');
+                // Выполнение команды интерпретации таблиц в фоновом режиме
+                $cr = new ConsoleRunner(['file' => '@my/path/to/yii']);
+                $cr->run('spreadsheet/annotate');
                 // Вывод сообщения об успехной загрузке файла таблицы
                 Yii::$app->getSession()->setFlash('success',
                     Yii::t('app', 'TABLE_ANNOTATION_MESSAGE_UPLOAD_TABLE'));
