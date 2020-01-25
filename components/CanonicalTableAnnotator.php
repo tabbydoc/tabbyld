@@ -66,6 +66,31 @@ class CanonicalTableAnnotator
     public $all_query_time = 0; // Общее время выполнения всех SPARQL-запросов
 
     /**
+     * Получение нормализованной текстовой записи: удаление всех символов, кроме букв, цифр и пробелов,
+     * удаление лишних пробелов, замена одинарных пробелов знаком "_".
+     *
+     * @param $entry - текстовая запись (значение в ячейке таблицы)
+     * @return mixed|string|string[]|null - нормализованное текстовое значение для SPARQL-запросов
+     */
+    public function getNormalizedEntry($entry)
+    {
+        // Удаление всех символов кроме букв и цифр из строки
+        $normalized_entry = preg_replace ('/[^a-zA-Zа-яА-Я0-9\s]/si','', $entry);
+        // Изменение множественных пробелов на один
+        $normalized_entry = preg_replace('/[^\S\r\n]+/', ' ', $normalized_entry);
+        $normalized_entry = preg_replace('/^(?![\r\n]\s)+|(?![\r\n]\s)+$/m', ' ',
+            $normalized_entry);
+        // Удаление пробелов из начала и конца строки
+        $normalized_entry = trim($normalized_entry);
+        // Перевод первой буквы в каждом слове в заглавую
+        $normalized_entry = ucwords(mb_strtolower($normalized_entry));
+        // Замена пробелов знаком нижнего подчеркивания
+        $normalized_entry = str_replace(' ', '_', $normalized_entry);
+
+        return $normalized_entry;
+    }
+
+    /**
      * Идентификация типа таблицы по столбцу DATA (блока данных).
      *
      * @param $data - данные каноничечкой таблицы
@@ -797,18 +822,9 @@ class CanonicalTableAnnotator
             foreach ($item as $heading => $value)
                 if ($heading == $heading_title) {
                     $string_array = explode(" | ", $value);
-                    foreach ($string_array as $key => $string) {
-                        // Удаление всех символов кроме букв и цифр из строки
-                        $normalized_string = preg_replace ('/[^a-zA-Zа-яА-Я0-9\s]/si','', $string);
-                        // Удаление пробелов из начала и конца строки
-                        $normalized_string = trim($normalized_string);
-                        // Все слова в строке начинаются с заглавной буквы
-                        $normalized_string = ucwords(mb_strtolower($normalized_string));
-                        // Замена пробелов знаком нижнего подчеркивания
-                        $normalized_string = str_replace(' ', '_', $normalized_string);
+                    foreach ($string_array as $key => $string)
                         // Формирование массива корректных значений для поиска сущностей
-                        $formed_heading_labels[$string] = $normalized_string;
-                    }
+                        $formed_heading_labels[$string] = $this->getNormalizedEntry($string);
                 }
         // Массив для хранения массивов сущностей кандидатов
         $all_candidate_entities = array();
@@ -865,9 +881,7 @@ class CanonicalTableAnnotator
             foreach ($row as $key => $value)
                 if ($key == self::DATA_TITLE) {
                     // Формирование массива корректных значений ячеек столбца с данными
-                    $str = ucwords(strtolower($value));
-                    $correct_string = str_replace(' ', '', $str);
-                    $formed_data_entries[$value] = $correct_string;
+                    $formed_data_entries[$value] = $this->getNormalizedEntry($value);
                     // Цикл по всем ячейкам столбца с NER-метками
                     foreach ($ner_labels as $ner_row_number => $ner_row)
                         foreach ($ner_row as $ner_key => $ner_value)
@@ -948,18 +962,8 @@ class CanonicalTableAnnotator
             foreach ($row as $heading => $value) {
                 // Если столбец с данными
                 if ($heading == self::DATA_TITLE) {
-                    // Запоминание текущего значения ячейки столбца с данными
-                    $current_data_value = $value;
-                    // Удаление всех символов кроме букв и цифр из строки
-                    $normalized_value = preg_replace ('/[^a-zA-Zа-яА-Я0-9\s]/si','', $value);
-                    // Удаление пробелов из начала и конца строки
-                    $normalized_value = trim($normalized_value);
-                    // Все слова в строке начинаются с заглавной буквы
-                    $normalized_value = ucwords(mb_strtolower($normalized_value));
-                    // Замена пробелов знаком нижнего подчеркивания
-                    $normalized_value = str_replace(' ', '_', $normalized_value);
                     // Формирование массива корректных значений ячеек столбца с данными
-                    $formed_data_entries[$value] = $normalized_value;
+                    $formed_data_entries[$value] = $this->getNormalizedEntry($value);
                     // Цикл по всем ячейкам столбца с NER-метками
                     foreach ($ner_labels as $ner_row_number => $ner_row)
                         foreach ($ner_row as $ner_key => $ner_value)
@@ -972,18 +976,9 @@ class CanonicalTableAnnotator
                 // Если столбцы с заголовками
                 if ($heading == self::ROW_HEADING_TITLE || $heading == self::COLUMN_HEADING_TITLE) {
                     $string_array = explode(" | ", $value);
-                    foreach ($string_array as $key => $string) {
-                        // Удаление всех символов кроме букв и цифр из строки
-                        $normalized_string = preg_replace ('/[^a-zA-Zа-яА-Я0-9\s]/si','', $string);
-                        // Удаление пробелов из начала и конца строки
-                        $normalized_string = trim($normalized_string);
-                        // Все слова в строке начинаются с заглавной буквы
-                        $normalized_string = ucwords(mb_strtolower($normalized_string));
-                        // Замена пробелов знаком нижнего подчеркивания
-                        $normalized_string = str_replace(' ', '_', $normalized_string);
+                    foreach ($string_array as $key => $string)
                         // Формирование массива корректных значений ячеек заголовков для строки
-                        array_push($heading_labels, $normalized_string);
-                    }
+                        array_push($heading_labels, $this->getNormalizedEntry($string));
                 }
             }
             // Формирование массива корректных значений ячеек заголовков таблицы
