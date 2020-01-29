@@ -2,8 +2,10 @@
 
 namespace app\components;
 
+use Yii;
 use DOMDocument;
 use BorderCloud\SPARQL\SparqlClient;
+use vova07\console\ConsoleRunner;
 
 /**
  * Class CanonicalTableAnnotator.
@@ -64,6 +66,47 @@ class CanonicalTableAnnotator
 
     public $log = '';           // Текст с записью логов хода выполнения аннотации таблицы
     public $all_query_time = 0; // Общее время выполнения всех SPARQL-запросов
+    public $data_entities = array();
+
+    /**
+     * Кодирование в имени файла запрещенных символов.
+     *
+     * @param $file_name - исходное имя файла
+     * @return mixed - имя файла с закодированными запрещенными символами
+     */
+    public static function encodeFileName($file_name) {
+        $encoded_file_name = str_replace('\\', '+SS-LS+', $file_name);
+        $encoded_file_name = str_replace('/', '+SS-RS+', $encoded_file_name);
+        $encoded_file_name = str_replace('*', '+SS-S+', $encoded_file_name);
+        $encoded_file_name = str_replace('?', '+SS-Q+', $encoded_file_name);
+        $encoded_file_name = str_replace(':', '+SS-C+', $encoded_file_name);
+        $encoded_file_name = str_replace('"', '+SS-QM+', $encoded_file_name);
+        $encoded_file_name = str_replace('<', '+SS-LB+', $encoded_file_name);
+        $encoded_file_name = str_replace('>', '+SS-RB+', $encoded_file_name);
+        $encoded_file_name = str_replace('|', '+SS-VL+', $encoded_file_name);
+
+        return $encoded_file_name;
+    }
+
+    /**
+     * Декодирование в имени файла запрещенных символов.
+     *
+     * @param $encoded_file_name - имя файла с закодированными запрещенными символами
+     * @return mixed - исходное имя файла
+     */
+    public static function decodeFileName($encoded_file_name) {
+        $source_file_name = str_replace('+SS-LS+', '\\', $encoded_file_name);
+        $source_file_name = str_replace('+SS-RS+', '/', $source_file_name);
+        $source_file_name = str_replace('+SS-S+', '*', $source_file_name);
+        $source_file_name = str_replace('+SS-Q+', '?', $source_file_name);
+        $source_file_name = str_replace('+SS-C+', ':', $source_file_name);
+        $source_file_name = str_replace('+SS-QM+', '"', $source_file_name);
+        $source_file_name = str_replace('+SS-LB+', '<', $source_file_name);
+        $source_file_name = str_replace('+SS-RB+', '>', $source_file_name);
+        $source_file_name = str_replace('+SS-VL+', '|', $source_file_name);
+
+        return $source_file_name;
+    }
 
     /**
      * Получение нормализованной текстовой записи: удаление всех символов, кроме букв, цифр и пробелов,
@@ -72,7 +115,7 @@ class CanonicalTableAnnotator
      * @param $entry - текстовая запись (значение в ячейке таблицы)
      * @return mixed|string|string[]|null - нормализованное текстовое значение для SPARQL-запросов
      */
-    public function getNormalizedEntry($entry)
+    public static function getNormalizedEntry($entry)
     {
         // Удаление всех символов кроме букв и цифр из строки
         $normalized_entry = preg_replace ('/[^a-zA-Zа-яА-Я0-9\s]/si','', $entry);
@@ -248,68 +291,88 @@ class CanonicalTableAnnotator
     /**
      * Нахождение связей между сущностями кандидатами.
      *
-     * @param $all_candidate_entities - множество всех массивов сущностей кандидатов
+     * @param $all_candidate_entities - набор всех массивов сущностей кандидатов
+     * @param $path - путь для сохранения файлов
      * @return array - ранжированный массив сущностей кандидатов
      */
-    public function getRelationshipDistance($all_candidate_entities)
+    public function getRelationshipDistance($all_candidate_entities, $path)
     {
-        // Массив ранжированных сущностей кандидатов
-        $ranked_candidate_entities = array();
-        // Массив названий URI DBpedia
-        $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION, self::DBPEDIA_PROPERTY_SECTION);
         // Обход всех наборов сущностей кандидатов
-        foreach ($all_candidate_entities as $key => $candidate_entities) {
-            // Массив сущностей кандидатов ранжированных по связям
-            $relationship_distance_array = array();
+        foreach ($all_candidate_entities as $label => $candidate_entities) {
+            // Кодирование в имени каталога запрещенных символов
+            $current_label = self::encodeFileName($label);
+            // Если не существует каталога для хранения результатов аннотирования таблицы
+            if (!file_exists($path . $label)) {
+                // Создание каталога для хранения результатов аннотирования таблицы
+                mkdir(Yii::$app->basePath . '/' . $path . $current_label, 0755);
+            }
             // Обход всех сущностей кандидатов из набора
             foreach ($candidate_entities as $candidate_entity) {
-                // Удаление адреса URI у сущности кандидата
-                $candidate_entity_name = str_replace($URIs, '', $candidate_entity);
-                // Текущее растояние
-                $distance = 0;
-                // Подключение к DBpedia
-                $sparql_client = new SparqlClient();
-                $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-                $query = "";
-                // Обход всех сущностей кандидатов из набора
-                foreach ($all_candidate_entities as $items)
-                    foreach ($items as $ce_key => $item) {
-                        // Удаление адреса URI у сущности кандидата
-                        $item_name = str_replace($URIs, '', $item);
-                        // Если эта не одна и тажа сущность
-                        if ($candidate_entity_name != $item_name)
-                            if ($ce_key == 0)
-                                // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
-                                $query = "PREFIX db: <http://dbpedia.org/resource/>
-                                    SELECT COUNT(*) as ?Triples
-                                    FROM <http://dbpedia.org>
-                                    WHERE {{ db:$candidate_entity_name ?property db:$item_name }";
-                            else
-                                $query .= " UNION { db:$candidate_entity_name ?property db:$item_name }";
-                    }
-                $query .= "}";
-                $rows = $sparql_client->query($query, 'rows');
-                $error = $sparql_client->getErrors();
-                // Если нет ошибок при запросе и есть результат запроса
-                if (!$error && $rows['result']['rows'])
-                    $distance = $rows['result']['rows'][0]['Triples'];
-
-                // Запить журнала
-                $this->log .= 'Запрос поиска связей для сущности-кандидата ' . $candidate_entity_name . ': ' .
-                    $rows['query_time'] . PHP_EOL;
-                $this->all_query_time += $rows['query_time'];
-
-                // Формирование массива ранжированных сущностей кандидатов по связям
-                array_push($relationship_distance_array, [$candidate_entity, $distance]);
+                // Параллельное нахождение связей между сущностями кандидатов
+                $cr = new ConsoleRunner(['file' => '@app/yii']);
+                $cr->run('spreadsheet/find-relationship-distance "' . $label .'" "' .
+                    $candidate_entity . '" ' . $path);
             }
-
-            $this->log .= PHP_EOL;
-
-            // Формирование массива ранжированных сущностей кандидатов для текущего значения ячейки
-            $ranked_candidate_entities[$key] = $relationship_distance_array;
+        }
+        // Ожидание формирования всех файлов с оценками
+        foreach ($all_candidate_entities as $label => $candidate_entities) {
+            if (!empty($candidate_entities)) {
+                // Кодирование в имени каталога запрещенных символов
+                $current_label = self::encodeFileName($label);
+                while (count(array_diff(scandir($path . $current_label . '/'),
+                        array('..', '.'))) != count($candidate_entities)) {
+                    usleep(1);
+                }
+            }
+        }
+        // Набор для всех массивов ранжированных сущностей кандидатов
+        $ranked_relationship_distance_candidate_entities = array();
+        // Обход всех наборов сущностей кандидатов
+        foreach ($all_candidate_entities as $label => $candidate_entities) {
+            if (!empty($candidate_entities)) {
+                // Кодирование в имени каталога запрещенных символов
+                $current_label = self::encodeFileName($label);
+                // Открытие каталога с файлами
+                if ($handle = opendir($path . $current_label . '/')) {
+                    // Массив ранжированных сущностей кандидатов
+                    $ranked_candidate_entities = array();
+                    // Чтения элементов (файлов) каталога
+                    while (false !== ($file_name = readdir($handle))) {
+                        // Если элемент каталога не является каталогом
+                        if ($file_name != '.' && $file_name != '..') {
+                            // Открытие файла
+                            $fp = fopen($path . $current_label . '/' . $file_name, "r");
+                            // Чтение файла до конца
+                            while (!feof($fp)) {
+                                // Чтение строки из файла и удаление переноса строк
+                                $text = str_replace("\r\n", '', fgets($fp));
+                                // Поиск в строке метки "SPARQL_EXECUTION_TIME"
+                                $pos = strpos($text, 'SPARQL_EXECUTION_TIME');
+                                // Если текущая строка является оценкой
+                                if ($text != '' && $pos === false) {
+                                    // Получение имени файла без расширения
+                                    $file_name_without_extension = pathinfo($file_name, PATHINFO_FILENAME );
+                                    // Декодирование имени файла
+                                    $candidate_entity_name = self::decodeFileName($file_name_without_extension);
+                                    // Добавление пространства имен
+                                    $candidate_entity_name = $this::DBPEDIA_RESOURCE_SECTION . $candidate_entity_name;
+                                    // Формирование массива ранжированных сущностей кандидатов
+                                    array_push($ranked_candidate_entities, [$candidate_entity_name, $text]);
+                                }
+                            }
+                            // Закрытие файла
+                            fclose($fp);
+                        }
+                    }
+                    // Закрытие каталога
+                    closedir($handle);
+                    // Добавление массива ранжированных сущностей кандидатов в общий набор
+                    $ranked_relationship_distance_candidate_entities[$label] = $ranked_candidate_entities;
+                }
+            }
         }
 
-        return $ranked_candidate_entities;
+        return $ranked_relationship_distance_candidate_entities;
     }
 
     /**
@@ -812,55 +875,84 @@ class CanonicalTableAnnotator
      *
      * @param $data - данные каноничечкой таблицы
      * @param $heading_title - имя столбца
+     * @param $path - путь для сохранения файла
      * @return array - массив с результатми поиска сущностей в онтологии DBpedia
      */
-    public function annotateTableHeading($data, $heading_title)
+    public function annotateTableHeading($data, $heading_title, $path)
     {
+        // Массив неповторяющихся корректных значений заголовков столбцов
         $formed_heading_labels = array();
-        // Формирование массивов неповторяющихся корректных значений столбцов для поиска сущностей в отнологии
+        // Формирование массива неповторяющихся корректных значений для заголовков столбцов
         foreach ($data as $item)
             foreach ($item as $heading => $value)
                 if ($heading == $heading_title) {
                     $string_array = explode(" | ", $value);
                     foreach ($string_array as $key => $string)
-                        // Формирование массива корректных значений для поиска сущностей
-                        $formed_heading_labels[$string] = $this->getNormalizedEntry($string);
+                        // Формирование массива корректных значений заголовков столбцов для поиска сущностей кандидатов
+                        $formed_heading_labels[$string] = self::getNormalizedEntry($string);
                 }
-        // Массив для хранения массивов сущностей кандидатов
+        // Обход массива корректных значений заголовков столбцов для поиска классов и концептов
+        foreach ($formed_heading_labels as $key => $heading_label) {
+            // Параллельное формирование сущностей кандидатов (классов и объектов)
+            $cr = new ConsoleRunner(['file' => '@app/yii']);
+            $cr->run('spreadsheet/get-candidate-entities "' . $heading_label . '" "' . $key . '" ' . $path);
+        }
+        // Ожидание формирования сущностей кандидатов
+        while (count(array_diff(scandir($path), array('..', '.'))) != count($formed_heading_labels)) {
+            sleep(1);
+        }
+
+        // Набор для хранения всех массивов сущностей кандидатов
         $all_candidate_entities = array();
         // Массив для ранжированных сущностей кандидатов по расстоянию Левенштейна
         $levenshtein_distance_candidate_entities = array();
-
-        $this->log .= '**************************' . PHP_EOL;
-
-        // Обход массива корректных значений столбцов для поиска классов и концептов
+        // Обход массива корректных значений заголовков столбцов для формирования набора всех массивов сущностей кандидатов
         foreach ($formed_heading_labels as $key => $heading_label) {
-            // Формирование набора сущностей кандидатов (классов и объектов)
-            $candidate_entities = $this->getCandidateEntities($heading_label);
-            // Если набор сущностей кандидатов сформирован
-            if ($candidate_entities) {
-                // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
-                $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($heading_label,
-                    $candidate_entities);
-                // Добавление массива сущностей кандидатов в общий набор
-                $all_candidate_entities[$key] = $candidate_entities;
+            // Массив сущностей кандидатов
+            $candidate_entities = array();
+            // Кодирование в имени файла запрещенных символов
+            $correct_key = self::encodeFileName($key);
+            // Открытие файла
+            $fp = fopen($path . $correct_key . '.log', "r");
+            // Чтение файла до конца
+            while (!feof($fp)) {
+                // Чтение строки из файла и удаление переноса строк
+                $text = str_replace("\r\n", '', fgets($fp));
+                // Поиск в строке метки "SPARQL_EXECUTION_TIME"
+                $pos = strpos($text, 'SPARQL_EXECUTION_TIME');
+                // Формирование массива сущностей кандидатов
+                if ($text != '' && $pos === false)
+                    array_push($candidate_entities, $text);
             }
+            // Добавление массива сущностей кандидатов в общий набор
+            $all_candidate_entities[$key] = $candidate_entities;
+            // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
+            $levenshtein_distance_candidate_entities[$key] = $this->getLevenshteinDistance($heading_label,
+                $candidate_entities);
         }
-
-        $this->log .= PHP_EOL;
+        // Открытие файла на запись для сохранения результатов поиска сущностей кандидатов
+        $levenshtein_results_file = fopen($path . 'levenshtein_results.log', 'a');
+        // Запись в файл логов аннотирования таблицы с оценкой расстояния Левенштейна
+        $json = json_encode($levenshtein_distance_candidate_entities, JSON_PRETTY_PRINT);
+        $json = str_replace('\/', '/', $json);
+        fwrite($levenshtein_results_file, $json);
+        // Закрытие файла
+        fclose($levenshtein_results_file);
 
         // Нахождение связей между сущностями кандидатов
-        $relationship_distance_candidate_entities = $this->getRelationshipDistance($all_candidate_entities);
-        // Получение агрегированных оценок (рангов) для сущностей кандидатов
-        $ranked_candidate_entities = $this->getAggregatedHeadingRanks($levenshtein_distance_candidate_entities, 1,
-            $relationship_distance_candidate_entities, 1);
+        $relationship_distance_candidate_entities = $this->getRelationshipDistance($all_candidate_entities, $path);
+        // Открытие файла на запись для сохранения результатов поиска сущностей кандидатов
+        $relationship_distance_results_file = fopen($path . 'relationship_distance_results.log', 'a');
+        // Запись в файл логов аннотирования таблицы с оценкой расстояния Левенштейна
+        $json = json_encode($relationship_distance_candidate_entities, JSON_PRETTY_PRINT);
+        $json = str_replace('\/', '/', $json);
+        fwrite($relationship_distance_results_file, $json);
+        // Закрытие файла
+        fclose($relationship_distance_results_file);
 
-        $this->log .= '**************************' . PHP_EOL;
-        $this->log .= 'Общее время на запросы для ' . $heading_title . ': ' .
-            $this->all_query_time . ' (сек.)' . PHP_EOL;
-        $this->log .= 'Общее время на запросы для ' . $heading_title . ': ' .
-            $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
-        $this->log .= '**************************' . PHP_EOL;
+        // Получение агрегированных оценок (рангов) для сущностей кандидатов
+        $ranked_candidate_entities = $this->getAggregatedHeadingRanks($levenshtein_distance_candidate_entities,
+            1, $relationship_distance_candidate_entities, 1);
 
         return $ranked_candidate_entities;
     }
@@ -870,9 +962,10 @@ class CanonicalTableAnnotator
      *
      * @param $data - данные каноничечкой таблицы
      * @param $ner_labels - данные с NER-метками
+     * @param $path - путь для сохранения файла
      * @return array - массив с результатми поиска объектов и классов в онтологии DBpedia
      */
-    public function annotateTableLiteralData($data, $ner_labels)
+    public function annotateTableLiteralData($data, $ner_labels, $path)
     {
         $formed_data_entries = array();
         $formed_ner_labels = array();
@@ -881,7 +974,7 @@ class CanonicalTableAnnotator
             foreach ($row as $key => $value)
                 if ($key == self::DATA_TITLE) {
                     // Формирование массива корректных значений ячеек столбца с данными
-                    $formed_data_entries[$value] = $this->getNormalizedEntry($value);
+                    $formed_data_entries[$value] = self::getNormalizedEntry($value);
                     // Цикл по всем ячейкам столбца с NER-метками
                     foreach ($ner_labels as $ner_row_number => $ner_row)
                         foreach ($ner_row as $ner_key => $ner_value)
@@ -891,11 +984,6 @@ class CanonicalTableAnnotator
                                     $formed_ner_labels[$value] = $ner_value;
                             }
                 }
-        // Массив ранжированных сущностей для столбца с данными "DATA"
-        $ranked_candidate_entities = array();
-
-        $this->log .= '**************************' . PHP_EOL;
-
         // Обход массива корректных значений столбца с данными для поиска подходящих объектов или классов
         foreach ($formed_data_entries as $key => $entry)
             foreach ($formed_ner_labels as $ner_key => $ner_label)
@@ -911,34 +999,47 @@ class CanonicalTableAnnotator
                         $ner_resource = self::DATE_ONTOLOGY_INSTANCE;
                     if ($ner_label == self::TIME_NER_LABEL)
                         $ner_resource = self::TIME_ONTOLOGY_INSTANCE;
-                    // Подключение к DBpedia
-                    $sparql_client = new SparqlClient();
-                    $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-                    // SPARQL-запрос к DBpedia для поиска точного совпадения объектом
-                    $query = "SELECT ?subject ?property ?object
-                        FROM <http://dbpedia.org>
-                        WHERE {
-                            ?subject ?property ?object . FILTER(?subject = <$ner_resource>)
-                        } LIMIT 1";
-                    $rows = $sparql_client->query($query, 'rows');
-                    $error = $sparql_client->getErrors();
-
-                    // Если нет ошибок при запросе и есть результат запроса
-                    if (!$error && $rows['result']['rows']) {
-                        // Формирование массива ранжированных сущностей
-                        $ranked_candidate_entities[$key] = $rows['result']['rows'][0]['subject'];
-                    }
-
-                    // Запить журнала
-                    $this->log .= 'Запрос поиска точного совпадения с объектом <' . $ner_resource . '>: ' .
-                        $rows['query_time'] . PHP_EOL;
-                    $this->all_query_time += $rows['query_time'];
+                    // Параллельное аннотирование ячеек с данными в фоновом режиме
+                    $cr = new ConsoleRunner(['file' => '@app/yii']);
+                    $cr->run('spreadsheet/annotate-literal-cell "' . $ner_resource . '" "' . $key . '" ' . $path);
                 }
-
-        $this->log .= '**************************' . PHP_EOL;
-        $this->log .= 'Общее время на запросы для DATA: ' . $this->all_query_time . ' (сек.)' . PHP_EOL;
-        $this->log .= 'Общее время на запросы для DATA: ' . $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
-        $this->log .= '**************************' . PHP_EOL;
+        // Ожидание формирования файлов с результатами аннотирования ячеек данных
+        while (count(array_diff(scandir($path), array('..', '.'))) != count($formed_data_entries)) {
+            sleep(1);
+        }
+        // Массив ранжированных сущностей для столбца с данными "DATA"
+        $ranked_candidate_entities = array();
+        // Открытие каталога с файлами
+        if ($handle = opendir($path)) {
+            // Чтения элементов (файлов) каталога
+            while (false !== ($file_name = readdir($handle))) {
+                // Если элемент каталога не является каталогом
+                if ($file_name != '.' && $file_name != '..') {
+                    // Открытие файла
+                    $fp = fopen($path . $file_name, "r");
+                    // Чтение файла до конца
+                    while (!feof($fp)) {
+                        // Чтение строки из файла и удаление переноса строк
+                        $text = str_replace("\r\n", '', fgets($fp));
+                        // Поиск в строке метки "SPARQL_EXECUTION_TIME"
+                        $pos = strpos($text, 'SPARQL_EXECUTION_TIME');
+                        // Если текущая строка является сущностью из онологии DBPedia
+                        if ($text != '' && $pos === false) {
+                            // Получение имени файла без расширения
+                            $file_name_without_extension = pathinfo($file_name, PATHINFO_FILENAME );
+                            // Декодирование в имени файла запрещенных символов
+                            $decode_file_name = self::decodeFileName($file_name_without_extension);
+                            // Формирование массива с найденными сущностями для столбца "DATA"
+                            $ranked_candidate_entities[$decode_file_name] = $text;
+                        }
+                    }
+                    // Закрытие файла
+                    fclose($fp);
+                }
+            }
+            // Закрытие каталога
+            closedir($handle);
+        }
 
         return $ranked_candidate_entities;
     }
@@ -963,7 +1064,7 @@ class CanonicalTableAnnotator
                 // Если столбец с данными
                 if ($heading == self::DATA_TITLE) {
                     // Формирование массива корректных значений ячеек столбца с данными
-                    $formed_data_entries[$value] = $this->getNormalizedEntry($value);
+                    $formed_data_entries[$value] = self::getNormalizedEntry($value);
                     // Цикл по всем ячейкам столбца с NER-метками
                     foreach ($ner_labels as $ner_row_number => $ner_row)
                         foreach ($ner_row as $ner_key => $ner_value)
@@ -978,7 +1079,7 @@ class CanonicalTableAnnotator
                     $string_array = explode(" | ", $value);
                     foreach ($string_array as $key => $string)
                         // Формирование массива корректных значений ячеек заголовков для строки
-                        array_push($heading_labels, $this->getNormalizedEntry($string));
+                        array_push($heading_labels, self::getNormalizedEntry($string));
                 }
             }
             // Формирование массива корректных значений ячеек заголовков таблицы

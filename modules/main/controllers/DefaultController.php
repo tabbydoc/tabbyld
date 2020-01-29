@@ -152,7 +152,7 @@ class DefaultController extends Controller
                 // Сохранение загруженного файла таблицы
                 $file_form->excel_file->saveAs('uploads/uploaded-table.xlsx');
                 // Выполнение команды интерпретации таблиц в фоновом режиме
-                $cr = new ConsoleRunner(['file' => '@my/path/to/yii']);
+                $cr = new ConsoleRunner(['file' => '@pp/yii']);
                 $cr->run('spreadsheet/annotate');
                 // Вывод сообщения об успехной загрузке файла таблицы
                 Yii::$app->getSession()->setFlash('success',
