@@ -3,12 +3,11 @@
 namespace app\components;
 
 use Yii;
-use DOMDocument;
-use BorderCloud\SPARQL\SparqlClient;
 use vova07\console\ConsoleRunner;
+use BorderCloud\SPARQL\SparqlClient;
 
 /**
- * Class CanonicalTableAnnotator.
+ * CanonicalTableAnnotator - класс семантического интерпретатора (аннотатора) данных канонических электронных таблиц.
  *
  * @package app\components
  */
@@ -66,7 +65,6 @@ class CanonicalTableAnnotator
 
     public $log = '';           // Текст с записью логов хода выполнения аннотации таблицы
     public $all_query_time = 0; // Общее время выполнения всех SPARQL-запросов
-    public $data_entities = array();
 
     /**
      * Кодирование в имени файла запрещенных символов.
@@ -1248,56 +1246,5 @@ class CanonicalTableAnnotator
                 }
 
         return $ranked_parent_class_candidates;
-    }
-
-    /**
-     * Генерация документа в формате RDF/XML.
-     */
-    public function generateRDFXMLCode()
-    {
-        // Создание документа DOM с кодировкой UTF8
-        $xml = new DomDocument('1.0', 'UTF-8');
-        // Создание корневого узла RDF с определением пространства имен
-        $rdf_element = $xml->createElement('rdf:RDF');
-        $rdf_element->setAttribute('xmlns:rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
-        $rdf_element->setAttribute('xmlns:dbo', self::DBPEDIA_ONTOLOGY_SECTION);
-        $rdf_element->setAttribute('xmlns:db', self::DBPEDIA_RESOURCE_SECTION);
-        $rdf_element->setAttribute('xmlns:dbp', self::DBPEDIA_PROPERTY_SECTION);
-        // Добавление корневого узла в XML-документ
-        $xml->appendChild($rdf_element);
-        // Создание узла триплета "Number"
-        $number_element = $xml->createElement('rdf:Description');
-        $number_element->setAttribute('rdf:about', 'http://dbpedia.org/resource/Number');
-        $number_flag = false;
-        // Создание узла триплета "Date"
-        $date_element = $xml->createElement('rdf:Description');
-        $date_element->setAttribute('rdf:about', 'http://dbpedia.org/resource/Date');
-        $date_flag = false;
-        // Цикл по всем найденным кандидатам для столбца DATA
-        foreach($this->data_entities as $key => $value) {
-            if ($value == 'http://dbpedia.org/resource/Number') {
-                // Добавление узла триплета "Number" в корневой узел RDF, если он не добавлен
-                if (!$number_flag) {
-                    $rdf_element->appendChild($number_element);
-                    $number_flag = true;
-                }
-                // Добавление объектов для триплета "Number"
-                $node_element = $xml->createElement('dbp:titleNumber', $key);
-                $number_element->appendChild($node_element);
-            }
-            if ($value == 'http://dbpedia.org/resource/Date') {
-                // Добавление узла триплета "Date" в корневой узел RDF, если он не добавлен
-                if (!$date_flag) {
-                    $rdf_element->appendChild($date_element);
-                    $date_flag = true;
-                }
-                // Добавление объектов для триплета "Date"
-                $node_element = $xml->createElement('dbp:title', $key);
-                $date_element->appendChild($node_element);
-            }
-        }
-        // Сохранение RDF-файла
-        $xml->formatOutput = true;
-        $xml->save('example.rdf');
     }
 }
