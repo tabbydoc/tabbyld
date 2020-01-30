@@ -72,26 +72,28 @@ class SpreadsheetController extends Controller
      */
     public function actionGetCandidateEntities($value, $entry, $path)
     {
-        // Массив сущностей кандидатов
-        $candidate_entities = array();
         // Подключение к DBpedia
         $sparql_client = new SparqlClient();
         $sparql_client->setEndpointRead(CanonicalTableAnnotator::ENDPOINT_NAME);
         // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
-        $query = "PREFIX db: <http://dbpedia.org/resource/>
+        $query = "PREFIX dbr: <http://dbpedia.org/resource/>
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             SELECT ?subject rdf:type ?object
             FROM <http://dbpedia.org>
-            WHERE { ?subject a ?object . FILTER ( regex(str(?subject), '$value', 'i') &&
-                (strstarts(str(?subject), str(db:)) && (str(?object) = str(owl:Thing))) )
+            WHERE { { ?subject a ?object . FILTER( (?subject = dbr:$value) && (strstarts(str(?subject), str(dbr:))) ) } 
+                UNION { ?subject a ?object . FILTER ( regex(str(?subject), '$value', 'i') &&
+                    (strstarts(str(?subject), str(dbr:)) && (str(?object) = str(owl:Thing))) ) }
         } LIMIT 100";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
+        // Массив сущностей кандидатов
+        $candidate_entities = array();
         // Если нет ошибок при запросе и есть результат запроса
         if (!$error && $rows['result']['rows'])
-            // Формирование массива сущностей кандидатов
+            // Формирование массива сущностей кандидатов (повторяющиеся сущности кандидаты не добавляются)
             foreach ($rows['result']['rows'] as $row)
-                array_push($candidate_entities, $row['subject']);
+                if (!in_array($row['subject'], $candidate_entities))
+                    array_push($candidate_entities, $row['subject']);
         // Кодирование в имени файла запрещенных символов
         $correct_entry = CanonicalTableAnnotator::encodeFileName($entry);
         // Открытие файла на запись для сохранения результатов поиска сущностей кандидатов
@@ -332,9 +334,17 @@ class SpreadsheetController extends Controller
                     $recall = $annotated_entity_number / $total_number;
                     // Открытие файла на запись для сохранения оценки полноты
                     $runtime_file = fopen(Yii::$app->basePath . '\web\results\runtime.log', 'a');
+                    // Запись в файл логов общего кол-ва элементов в таблице
+                    fwrite($runtime_file, 'Общее кол-во элементов в ' . $file_name_without_extension .
+                        ': ' . $total_number . PHP_EOL);
+                    fwrite($runtime_file, '**********************************************************' . PHP_EOL);
+                    // Запись в файл логов кол-ва аннотированных элементов в таблице
+                    fwrite($runtime_file, 'Кол-во аннотированных элементов в ' . $file_name_without_extension .
+                        ': ' . $annotated_entity_number . PHP_EOL);
+                    fwrite($runtime_file, '**********************************************************' . PHP_EOL);
                     // Запись в файл логов оценки полноты
-                    fwrite($runtime_file, 'Полнота (recall) для ' . $file_name_without_extension . ': ' .
-                        $recall . PHP_EOL);
+                    fwrite($runtime_file, 'Полнота (recall) для ' . $file_name_without_extension .
+                        ': ' . $recall . PHP_EOL);
                     // Закрытие файла
                     fclose($runtime_file);
                 }
@@ -347,11 +357,11 @@ class SpreadsheetController extends Controller
         // Сохранение времени выполнения скрипта
         $runtime = round(microtime(true) - $start, 4);
         // Запись в файл логов времени выполнения скрипта
+        fwrite($runtime_file, '**********************************************************' . PHP_EOL);
         fwrite($runtime_file, 'Время выполнения скрипта: ' . $runtime . ' сек.' . PHP_EOL);
         fwrite($runtime_file, '**********************************************************' . PHP_EOL);
-        fwrite($runtime_file, 'Время выполнения скрипта: ' . ($runtime / 60) . ' мин.' . PHP_EOL);
-        fwrite($runtime_file, '**********************************************************' . PHP_EOL);
-        fwrite($runtime_file, 'Время выполнения скрипта: ' . (($runtime / 60) / 60) . ' час.' . PHP_EOL);
+        fwrite($runtime_file, 'Время выполнения скрипта: ' .
+            date("H:i:s",mktime(0, 0, $runtime)) . PHP_EOL);
         // Закрытие файла
         fclose($runtime_file);
     }
