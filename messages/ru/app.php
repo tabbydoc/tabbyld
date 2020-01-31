@@ -113,4 +113,30 @@ return [
     'LANG_MODEL_LOCAL' => 'Локаль',
     'LANG_MODEL_NAME' => 'Название',
     'LANG_MODEL_DEFAULT' => 'Язык по умолчанию',
+
+    /* AnnotatedDataset */
+    'ANNOTATED_DATASET_MODEL_ID' => 'ID',
+    'ANNOTATED_DATASET_MODEL_CREATED_AT' => 'Создан',
+    'ANNOTATED_DATASET_MODEL_UPDATED_AT' => 'Обновлен',
+    'ANNOTATED_DATASET_MODEL_NAME' => 'Название',
+    'ANNOTATED_DATASET_MODEL_AUTHOR' => 'Автор',
+    'ANNOTATED_DATASET_MODEL_STATUS' => 'Статус',
+    'ANNOTATED_DATASET_MODEL_DESCRIPTION' => 'Описание',
+
+    /* AnnotatedCanonicalTable */
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ID' => 'ID',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_CREATED_AT' => 'Создана',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_UPDATED_AT' => 'Обновлена',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_NAME' => 'Название',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_DESCRIPTION' => 'Описание',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_DATASET' => 'Набор данных',
+
+    /* AnnotatedRow */
+    'ANNOTATED_ROW_MODEL_ID' => 'ID',
+    'ANNOTATED_ROW_MODEL_CREATED_AT' => 'Создана',
+    'ANNOTATED_ROW_MODEL_UPDATED_AT' => 'Обновлена',
+    'ANNOTATED_ROW_MODEL_DATA' => 'DATA',
+    'ANNOTATED_ROW_MODEL_ROW_HEADING' => 'RowHeading1',
+    'ANNOTATED_ROW_MODEL_COLUMN_HEADING' => 'ColumnHeading',
+    'ANNOTATED_ROW_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Таблица',
 ];
