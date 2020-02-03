@@ -139,4 +139,30 @@ return [
     'ANNOTATED_ROW_MODEL_ROW_HEADING' => 'RowHeading1',
     'ANNOTATED_ROW_MODEL_COLUMN_HEADING' => 'ColumnHeading',
     'ANNOTATED_ROW_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Table',
+
+    /* CellValue */
+    'CELL_VALUE_MODEL_ID' => 'ID',
+    'CELL_VALUE_MODEL_CREATED_AT' => 'Created at',
+    'CELL_VALUE_MODEL_UPDATED_AT' => 'Updated at',
+    'CELL_VALUE_MODEL_NAME' => 'Name',
+    'CELL_VALUE_MODEL_TYPE' => 'Type',
+    'CELL_VALUE_MODEL_EXECUTION_TIME' => 'Execution time',
+    'CELL_VALUE_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Table',
+
+    /* CandidateEntity */
+    'CANDIDATE_ENTITY_MODEL_ID' => 'ID',
+    'CANDIDATE_ENTITY_MODEL_CREATED_AT' => 'Created at',
+    'CANDIDATE_ENTITY_MODEL_UPDATED_AT' => 'Updated at',
+    'CANDIDATE_ENTITY_MODEL_ENTITY' => 'Candidate entity',
+    'CANDIDATE_ENTITY_MODEL_LEVENSHTEIN_DISTANCE' => 'Levenshtein distance',
+    'CANDIDATE_ENTITY_MODEL_AGGREGATED_RANK' => 'Aggregated rank',
+    'CANDIDATE_ENTITY_MODEL_CELL_VALUE' => 'Cell value',
+
+    /* RelationshipDistance */
+    'RELATIONSHIP_DISTANCE_MODEL_ID' => 'ID',
+    'RELATIONSHIP_DISTANCE_MODEL_CREATED_AT' => 'Created at',
+    'RELATIONSHIP_DISTANCE_MODEL_UPDATED_AT' => 'Updated at',
+    'RELATIONSHIP_DISTANCE_MODEL_DISTANCE' => 'Distance',
+    'RELATIONSHIP_DISTANCE_MODEL_EXECUTION_TIME' => 'Execution time',
+    'RELATIONSHIP_DISTANCE_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
 ];

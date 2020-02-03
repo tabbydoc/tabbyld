@@ -139,4 +139,30 @@ return [
     'ANNOTATED_ROW_MODEL_ROW_HEADING' => 'RowHeading1',
     'ANNOTATED_ROW_MODEL_COLUMN_HEADING' => 'ColumnHeading',
     'ANNOTATED_ROW_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Таблица',
+
+    /* CellValue */
+    'CELL_VALUE_MODEL_ID' => 'ID',
+    'CELL_VALUE_MODEL_CREATED_AT' => 'Создано',
+    'CELL_VALUE_MODEL_UPDATED_AT' => 'Обновлено',
+    'CELL_VALUE_MODEL_NAME' => 'Название',
+    'CELL_VALUE_MODEL_TYPE' => 'Тип',
+    'CELL_VALUE_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'CELL_VALUE_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Таблица',
+
+    /* CandidateEntity */
+    'CANDIDATE_ENTITY_MODEL_ID' => 'ID',
+    'CANDIDATE_ENTITY_MODEL_CREATED_AT' => 'Создана',
+    'CANDIDATE_ENTITY_MODEL_UPDATED_AT' => 'Обновлена',
+    'CANDIDATE_ENTITY_MODEL_ENTITY' => 'Сущность кандидат',
+    'CANDIDATE_ENTITY_MODEL_LEVENSHTEIN_DISTANCE' => 'Расстояние Левенштейна',
+    'CANDIDATE_ENTITY_MODEL_AGGREGATED_RANK' => 'Агрегированный ранг',
+    'CANDIDATE_ENTITY_MODEL_CELL_VALUE' => 'Значение ячейки',
+
+    /* RelationshipDistance */
+    'RELATIONSHIP_DISTANCE_MODEL_ID' => 'ID',
+    'RELATIONSHIP_DISTANCE_MODEL_CREATED_AT' => 'Создан',
+    'RELATIONSHIP_DISTANCE_MODEL_UPDATED_AT' => 'Обновлен',
+    'RELATIONSHIP_DISTANCE_MODEL_DISTANCE' => 'Расстояние',
+    'RELATIONSHIP_DISTANCE_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'RELATIONSHIP_DISTANCE_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
 ];
