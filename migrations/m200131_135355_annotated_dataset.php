@@ -22,7 +22,7 @@ class m200131_135355_annotated_dataset extends Migration
             'status' => $this->smallInteger()->notNull()->defaultValue(0),
             'recall' => $this->double()->notNull(),
             'precision' => $this->double()->notNull(),
-            'runtime' => $this->time()->notNull(),
+            'runtime' => $this->double()->notNull(),
             'description' => $this->string(),
         ], $tableOptions);
 

@@ -22,7 +22,7 @@ class m200131_135413_annotated_canonical_table extends Migration
             'annotated_element_number' => $this->integer()->notNull(),
             'recall' => $this->double()->notNull(),
             'precision' => $this->double()->notNull(),
-            'runtime' => $this->time()->notNull(),
+            'runtime' => $this->double()->notNull(),
             'description' => $this->string(),
             'annotated_dataset' => $this->integer()->notNull(),
         ], $tableOptions);

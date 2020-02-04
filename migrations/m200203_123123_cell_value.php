@@ -18,7 +18,9 @@ class m200203_123123_cell_value extends Migration
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
             'name' => $this->string()->notNull(),
+            'execution_time' => $this->double()->notNull(),
             'type' => $this->smallInteger()->notNull()->defaultValue(0),
+
             'annotated_canonical_table' => $this->integer()->notNull(),
         ], $tableOptions);
 

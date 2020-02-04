@@ -154,6 +154,7 @@ return [
     'CELL_VALUE_MODEL_UPDATED_AT' => 'Обновлено',
     'CELL_VALUE_MODEL_NAME' => 'Название',
     'CELL_VALUE_MODEL_TYPE' => 'Тип',
+    'CELL_VALUE_MODEL_EXECUTION_TIME' => 'Время выполнения',
     'CELL_VALUE_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Таблица',
 
     /* CandidateEntity */

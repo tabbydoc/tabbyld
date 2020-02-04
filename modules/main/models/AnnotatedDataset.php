@@ -16,7 +16,7 @@ use yii\behaviors\TimestampBehavior;
  * @property int $status
  * @property double $recall
  * @property double $precision
- * @property string $runtime
+ * @property double $runtime
  * @property string $description
  *
  * @property AnnotatedCanonicalTable[] $annotatedCanonicalTables
@@ -42,10 +42,9 @@ class AnnotatedDataset extends \yii\db\ActiveRecord
         return [
             [['name', 'recall', 'precision', 'runtime'], 'required'],
             ['status', 'integer'],
-            [['recall', 'precision'], 'double'],
+            [['recall', 'precision', 'runtime'], 'double'],
             [['name', 'author'], 'string', 'max' => 255],
             [['description'], 'string', 'max' => 1000],
-            ['runtime', 'safe'],
         ];
     }
 

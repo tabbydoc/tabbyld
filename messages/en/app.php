@@ -154,6 +154,7 @@ return [
     'CELL_VALUE_MODEL_UPDATED_AT' => 'Updated at',
     'CELL_VALUE_MODEL_NAME' => 'Name',
     'CELL_VALUE_MODEL_TYPE' => 'Type',
+    'CELL_VALUE_MODEL_EXECUTION_TIME' => 'Execution time',
     'CELL_VALUE_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Table',
 
     /* CandidateEntity */

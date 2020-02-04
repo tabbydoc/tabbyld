@@ -79,6 +79,10 @@ $config = [
                 ],
             ],
         ],
+        'formatter' => [
+            'datetimeFormat' => 'dd.MM.Y HH:mm',
+            'timeZone' => 'UTC',
+        ],
         // Подключение расширения для запуска консольных команд в фоновом режиме в среде Yii
         'consoleRunner' => [
             'class' => 'vova07\console\ConsoleRunner',

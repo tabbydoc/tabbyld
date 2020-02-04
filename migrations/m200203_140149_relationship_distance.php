@@ -17,8 +17,8 @@ class m200203_140149_relationship_distance extends Migration
             'id' => $this->primaryKey(),
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
-            'distance' => $this->double(),
-            'execution_time' => $this->double(),
+            'distance' => $this->double()->notNull(),
+            'execution_time' => $this->double()->notNull(),
             'candidate_entity' => $this->integer()->notNull(),
         ], $tableOptions);
 
