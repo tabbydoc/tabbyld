@@ -13,7 +13,6 @@ use yii\behaviors\TimestampBehavior;
  * @property int $updated_at
  * @property string $name
  * @property int $type
- * @property double $execution_time
  * @property int $annotated_canonical_table
  *
  * @property CandidateEntity[] $candidateEntities
@@ -39,9 +38,8 @@ class CellValue extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'execution_time', 'annotated_canonical_table'], 'required'],
+            [['name', 'annotated_canonical_table'], 'required'],
             [['type', 'annotated_canonical_table'], 'integer'],
-            [['execution_time'], 'number'],
             [['name'], 'string', 'max' => 1000],
             [['annotated_canonical_table'], 'exist', 'skipOnError' => true,
                 'targetClass' => AnnotatedCanonicalTable::className(),
@@ -60,7 +58,6 @@ class CellValue extends \yii\db\ActiveRecord
             'updated_at' => Yii::t('app', 'CELL_VALUE_MODEL_UPDATED_AT'),
             'name' => Yii::t('app', 'CELL_VALUE_MODEL_NAME'),
             'type' => Yii::t('app', 'CELL_VALUE_MODEL_TYPE'),
-            'execution_time' => Yii::t('app', 'CELL_VALUE_MODEL_EXECUTION_TIME'),
             'annotated_canonical_table' => Yii::t('app', 'CELL_VALUE_MODEL_ANNOTATED_CANONICAL_TABLE'),
         ];
     }

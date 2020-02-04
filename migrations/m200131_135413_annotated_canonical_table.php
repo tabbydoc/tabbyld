@@ -18,6 +18,11 @@ class m200131_135413_annotated_canonical_table extends Migration
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
             'name' => $this->string()->notNull(),
+            'total_element_number' => $this->integer()->notNull(),
+            'annotated_element_number' => $this->integer()->notNull(),
+            'recall' => $this->double()->notNull(),
+            'precision' => $this->double()->notNull(),
+            'runtime' => $this->time()->notNull(),
             'description' => $this->string(),
             'annotated_dataset' => $this->integer()->notNull(),
         ], $tableOptions);

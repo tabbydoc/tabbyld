@@ -121,6 +121,9 @@ return [
     'ANNOTATED_DATASET_MODEL_NAME' => 'Название',
     'ANNOTATED_DATASET_MODEL_AUTHOR' => 'Автор',
     'ANNOTATED_DATASET_MODEL_STATUS' => 'Статус',
+    'ANNOTATED_DATASET_MODEL_RECALL' => 'Полнота',
+    'ANNOTATED_DATASET_MODEL_PRECISION' => 'Точность',
+    'ANNOTATED_DATASET_MODEL_RUNTIME' => 'Время выполнения',
     'ANNOTATED_DATASET_MODEL_DESCRIPTION' => 'Описание',
 
     /* AnnotatedCanonicalTable */
@@ -128,6 +131,11 @@ return [
     'ANNOTATED_CANONICAL_TABLE_MODEL_CREATED_AT' => 'Создана',
     'ANNOTATED_CANONICAL_TABLE_MODEL_UPDATED_AT' => 'Обновлена',
     'ANNOTATED_CANONICAL_TABLE_MODEL_NAME' => 'Название',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_TOTAL_ELEMENT_NUMBER' => 'Общее количество элементов',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_ELEMENT_NUMBER' => 'Количество аннотированных элементов',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_RECALL' => 'Полнота',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_PRECISION' => 'Точность',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_RUNTIME' => 'Время выполнения',
     'ANNOTATED_CANONICAL_TABLE_MODEL_DESCRIPTION' => 'Описание',
     'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_DATASET' => 'Набор данных',
 
@@ -146,7 +154,6 @@ return [
     'CELL_VALUE_MODEL_UPDATED_AT' => 'Обновлено',
     'CELL_VALUE_MODEL_NAME' => 'Название',
     'CELL_VALUE_MODEL_TYPE' => 'Тип',
-    'CELL_VALUE_MODEL_EXECUTION_TIME' => 'Время выполнения',
     'CELL_VALUE_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Таблица',
 
     /* CandidateEntity */

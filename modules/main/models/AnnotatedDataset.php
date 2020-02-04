@@ -14,6 +14,9 @@ use yii\behaviors\TimestampBehavior;
  * @property string $name
  * @property string $author
  * @property int $status
+ * @property double $recall
+ * @property double $precision
+ * @property string $runtime
  * @property string $description
  *
  * @property AnnotatedCanonicalTable[] $annotatedCanonicalTables
@@ -37,10 +40,12 @@ class AnnotatedDataset extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            ['name', 'required'],
+            [['name', 'recall', 'precision', 'runtime'], 'required'],
             ['status', 'integer'],
+            [['recall', 'precision'], 'double'],
             [['name', 'author'], 'string', 'max' => 255],
             [['description'], 'string', 'max' => 1000],
+            ['runtime', 'safe'],
         ];
     }
 
@@ -56,6 +61,9 @@ class AnnotatedDataset extends \yii\db\ActiveRecord
             'name' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_NAME'),
             'author' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_AUTHOR'),
             'status' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_STATUS'),
+            'recall' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_RECALL'),
+            'precision' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_PRECISION'),
+            'runtime' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_RUNTIME'),
             'description' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_DESCRIPTION'),
         ];
     }

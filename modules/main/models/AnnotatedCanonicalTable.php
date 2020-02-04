@@ -12,6 +12,11 @@ use yii\behaviors\TimestampBehavior;
  * @property int $created_at
  * @property int $updated_at
  * @property string $name
+ * @property int $total_element_number
+ * @property int $annotated_element_number
+ * @property double $recall
+ * @property double $precision
+ * @property string $runtime
  * @property string $description
  * @property int $annotated_dataset
  *
@@ -34,10 +39,13 @@ class AnnotatedCanonicalTable extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'annotated_dataset'], 'required'],
-            ['annotated_dataset', 'integer'],
+            [['name', 'total_element_number', 'annotated_element_number', 'recall', 'precision',
+                'runtime', 'annotated_dataset'], 'required'],
+            [['total_element_number', 'annotated_element_number', 'annotated_dataset'], 'integer'],
+            [['recall', 'precision'], 'double'],
             [['name'], 'string', 'max' => 255],
             [['description'], 'string', 'max' => 1000],
+            ['runtime', 'safe'],
             [['annotated_dataset'], 'exist', 'skipOnError' => true, 'targetClass' => AnnotatedDataset::className(),
                 'targetAttribute' => ['annotated_dataset' => 'id']],
         ];
@@ -53,6 +61,13 @@ class AnnotatedCanonicalTable extends \yii\db\ActiveRecord
             'created_at' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_CREATED_AT'),
             'updated_at' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_UPDATED_AT'),
             'name' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_NAME'),
+            'total_element_number' => Yii::t('app',
+                'ANNOTATED_CANONICAL_TABLE_MODEL_TOTAL_ELEMENT_NUMBER'),
+            'annotated_element_number' => Yii::t('app',
+                'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_ELEMENT_NUMBER'),
+            'recall' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_RECALL'),
+            'precision' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_PRECISION'),
+            'runtime' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_RUNTIME'),
             'description' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_DESCRIPTION'),
             'annotated_dataset' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_DATASET'),
         ];
