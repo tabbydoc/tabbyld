@@ -2,13 +2,14 @@
 
 namespace app\commands;
 
-use Yii;
 use yii\console\Controller;
 use moonland\phpexcel\Excel;
 use BorderCloud\SPARQL\SparqlClient;
 use app\modules\main\models\ExcelFileForm;
 use app\components\CanonicalTableAnnotator;
+use app\modules\main\models\CellValue;
 use app\modules\main\models\AnnotatedRow;
+use app\modules\main\models\CandidateEntity;
 use app\modules\main\models\AnnotatedDataset;
 use app\modules\main\models\AnnotatedCanonicalTable;
 
@@ -33,9 +34,9 @@ class SpreadsheetController extends Controller
      *
      * @param $ner_resource - NER-метка
      * @param $entry - значение ячейки
-     * @param $path - путь для сохранения файла
+     * @param $canonical_table_id - идентификатор канонической таблицы в БД
      */
-    public function actionAnnotateLiteralCell($ner_resource, $entry, $path)
+    public function actionAnnotateLiteralCell($ner_resource, $entry, $canonical_table_id)
     {
         // Переменная хранения сущности для ячейки с литеральными данными в столбце "DATA"
         $found_entity = '';
@@ -54,16 +55,19 @@ class SpreadsheetController extends Controller
         if (!$error && $rows['result']['rows'])
             // Запоминание найденной сущности в онтологии DBpedia
             $found_entity = $rows['result']['rows'][0]['subject'];
-        // Кодирование в имени файла запрещенных символов
-        $correct_entry = CanonicalTableAnnotator::encodeFileName($entry);
-        // Открытие файла на запись для сохранения результатов аннотирования ячейки с данными
-        $result_file = fopen($path . $correct_entry . '.log', 'a');
-        // Запись в файл логов результатов аннотирования ячейки с данными
-        fwrite($result_file, $found_entity . PHP_EOL);
-        // Запись в файл логов времени выполнения запроса
-        fwrite($result_file, 'SPARQL_EXECUTION_TIME: ' . $rows['query_time']);
-        // Закрытие файла
-        fclose($result_file);
+        // Сохранение значения ячейки канонической таблицы в БД
+        $cell_value_model = new CellValue();
+        $cell_value_model->name = $entry;
+        $cell_value_model->type = CellValue::DATA;
+        $cell_value_model->execution_time = $rows['query_time'];
+        $cell_value_model->annotated_canonical_table = $canonical_table_id;
+        $cell_value_model->save();
+        // Сохранение найденной сущности кандидата в БД
+        $candidate_entity_model = new CandidateEntity();
+        $candidate_entity_model->entity = $found_entity;
+        $candidate_entity_model->aggregated_rank = 1;
+        $candidate_entity_model->cell_value = $cell_value_model->id;
+        $candidate_entity_model->save();
     }
 
     /**
@@ -71,9 +75,10 @@ class SpreadsheetController extends Controller
      *
      * @param $value - значение для поиска сущностей кандидатов по вхождению
      * @param $entry - оригинальное значение в ячейки таблицы
-     * @param $path - путь для сохранения файла
+     * @param $heading_title - имя столбца
+     * @param $canonical_table_id - идентификатор канонической таблицы в БД
      */
-    public function actionGetCandidateEntities($value, $entry, $path)
+    public function actionGetCandidateEntities($value, $entry, $heading_title, $canonical_table_id)
     {
         // Подключение к DBpedia
         $sparql_client = new SparqlClient();
@@ -97,19 +102,24 @@ class SpreadsheetController extends Controller
             foreach ($rows['result']['rows'] as $row)
                 if (!in_array($row['subject'], $candidate_entities))
                     array_push($candidate_entities, $row['subject']);
-        // Кодирование в имени файла запрещенных символов
-        $correct_entry = CanonicalTableAnnotator::encodeFileName($entry);
-        // Открытие файла на запись для сохранения результатов поиска сущностей кандидатов
-        $result_file = fopen($path . $correct_entry . '.log', 'a');
-        // Запись в файл логов результатов аннотирования ячейки с данными
+        // Сохранение значения ячейки канонической таблицы в БД
+        $cell_value_model = new CellValue();
+        $cell_value_model->name = $entry;
+        if ($heading_title == CanonicalTableAnnotator::ROW_HEADING_TITLE)
+            $cell_value_model->type = CellValue::ROW_HEADING;
+        if ($heading_title == CanonicalTableAnnotator::COLUMN_HEADING_TITLE)
+            $cell_value_model->type = CellValue::COLUMN_HEADING;
+        $cell_value_model->execution_time = $rows['query_time'];
+        $cell_value_model->annotated_canonical_table = $canonical_table_id;
+        $cell_value_model->save();
+        // Обход всех сущностей кандидатов
         foreach ($candidate_entities as $candidate_entity) {
-            $correct_candidate_entity = str_replace('\/', '/', $candidate_entity);
-            fwrite($result_file, $correct_candidate_entity . PHP_EOL);
+            // Сохранение сущности кандидата в БД
+            $candidate_entity_model = new CandidateEntity();
+            $candidate_entity_model->entity = $candidate_entity;
+            $candidate_entity_model->cell_value = $cell_value_model->id;
+            $candidate_entity_model->save();
         }
-        // Запись в файл логов времени выполнения запроса
-        fwrite($result_file, 'SPARQL_EXECUTION_TIME: ' . $rows['query_time']);
-        // Закрытие файла
-        fclose($result_file);
     }
 
     /**
@@ -129,10 +139,11 @@ class SpreadsheetController extends Controller
         if ($handle = opendir($path)) {
             // Чтения элементов (файлов) каталога
             while (false !== ($file_name = readdir($handle))) {
+                // Поиск в строке символов расширения ".log"
+                $pos = strpos($file_name, '.log');
                 // Если элемент каталога не является каталогом, файлом с результатами вычисления расстояния Левенштейна
                 // и если название файла не совпадает с текущим выбранным элементом
-                if ($file_name != '.' && $file_name != '..' && is_file($file_name) &&
-                    $file_name != 'levenshtein_results.log' && $file_name != $correct_current_label . '.log') {
+                if ($file_name != '.' && $file_name != '..' && $pos != false) {
                     // Массив сущностей кандидатов
                     $candidate_entities = array();
                     // Кодирование в имени файла запрещенных символов
@@ -143,16 +154,16 @@ class SpreadsheetController extends Controller
                     while (!feof($fp)) {
                         // Чтение строки из файла и удаление переноса строк
                         $text = str_replace("\r\n", '', fgets($fp));
-                        // Поиск в строке метки "SPARQL_EXECUTION_TIME"
-                        $pos = strpos($text, 'SPARQL_EXECUTION_TIME');
                         // Формирование массива сущностей кандидатов
-                        if ($text != '' && $pos === false)
+                        if ($text != '')
                             array_push($candidate_entities, $text);
                     }
                     // Закрытие файла
                     fclose($fp);
+                    // Получение имени файла без расширения
+                    $file_name_without_extension = pathinfo($file_name, PATHINFO_FILENAME );
                     // Добавление массива сущностей кандидатов в общий набор
-                    $all_candidate_entities[$current_label] = $candidate_entities;
+                    $all_candidate_entities[$file_name_without_extension] = $candidate_entities;
                 }
             }
             // Закрытие каталога
@@ -213,10 +224,13 @@ class SpreadsheetController extends Controller
         // Начало отсчета времени выполнения скрипта
         $start = microtime(true);
         // Сохранение информации об аннотированном наборе данных электронных таблиц в БД
-        $annotated_dataset = new AnnotatedDataset();
-        $annotated_dataset->name = 'test_dataset';
-        $annotated_dataset->status = AnnotatedDataset::PUBLIC_STATUS;
-        $annotated_dataset->save();
+        $annotated_dataset_model = new AnnotatedDataset();
+        $annotated_dataset_model->name = 'test_dataset';
+        $annotated_dataset_model->status = AnnotatedDataset::PUBLIC_STATUS;
+        $annotated_dataset_model->recall = 0;
+        $annotated_dataset_model->precision = 0;
+        $annotated_dataset_model->runtime = 0;
+        $annotated_dataset_model->save();
         // Открытие каталога с набором данных электронных таблиц
         if ($handle = opendir('web/dataset/')) {
             // Чтения элементов (файлов) каталога
@@ -235,37 +249,19 @@ class SpreadsheetController extends Controller
                         'setIndexSheetByName' => true,
                         'getOnlySheet' => ExcelFileForm::NER_TAGS,
                     ]);
-
                     // Получение имени файла без расширения
                     $file_name_without_extension = pathinfo($file_name, PATHINFO_FILENAME );
-                    // Если не существует директории для хранения результатов аннотирования таблицы
-                    if (!file_exists('web/results/' . $file_name_without_extension . '/'))
-                        // Создание директории для хранения результатов аннотирования таблицы
-                        mkdir(Yii::$app->basePath . '\web\results\\' .
-                            $file_name_without_extension, 0755);
-                    // Путь до файла с результатами аннотирования ячеек столбца с данными "DATA"
-                    $data_path = 'web/results/' . $file_name_without_extension . '/data_result/';
-                    // Создание директории для хранения результатов аннотирования ячеек столбца с данными "DATA"
-                    if (!file_exists($data_path))
-                        mkdir(Yii::$app->basePath . '\web\results\\' . $file_name_without_extension .
-                            '\data_result', 0755);
-                    // Путь до файла с результатами аннотирования ячеек столбца с данными "RowHeading"
-                    $row_heading_path = 'web/results/' . $file_name_without_extension . '/row_heading_result/';
-                    // Создание директории для хранения результатов аннотирования ячеек столбца с заголовками "RowHeading"
-                    if (!file_exists($row_heading_path))
-                        mkdir(Yii::$app->basePath . '\web\results\\' . $file_name_without_extension .
-                            '\row_heading_result', 0755);
-                    // Путь до файла с результатами аннотирования ячеек столбца с данными "ColumnHeading"
-                    $column_heading_path = 'web/results/' . $file_name_without_extension . '/column_heading_result/';
-                    // Создание директории для хранения результатов аннотирования ячеек столбца с заголовками "ColumnHeading"
-                    if (!file_exists($column_heading_path))
-                        mkdir(Yii::$app->basePath . '\web\results\\' . $file_name_without_extension .
-                            '\column_heading_result', 0755);
+                    // Сохранение информации об аннотированной канонической таблице в БД
+                    $annotated_canonical_table_model = new AnnotatedCanonicalTable();
+                    $annotated_canonical_table_model->name = $file_name_without_extension;
+                    $annotated_canonical_table_model->total_element_number = 0;
+                    $annotated_canonical_table_model->annotated_element_number = 0;
+                    $annotated_canonical_table_model->recall = 0;
+                    $annotated_canonical_table_model->precision = 0;
+                    $annotated_canonical_table_model->runtime = 0;
+                    $annotated_canonical_table_model->annotated_dataset = $annotated_dataset_model->id;
+                    $annotated_canonical_table_model->save();
 
-                    // Массивы для ранжированных сущностей кандидатов
-                    $ranked_data_candidate_entities = array();
-                    $ranked_row_heading_candidate_entities = array();
-                    $ranked_column_heading_candidate_entities = array();
                     // Создание объекта аннотатора таблиц
                     $annotator = new CanonicalTableAnnotator();
                     // Идентификация типа таблицы по столбцу DATA
@@ -273,16 +269,16 @@ class SpreadsheetController extends Controller
                     // Если установлена стратегия аннотирования литеральных значений
                     if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::LITERAL_STRATEGY) {
                         // Аннотирование столбца "DATA"
-                        $ranked_data_candidate_entities = $annotator->annotateTableLiteralData($data,
-                            $ner_data, $data_path);
+                        $annotator->annotateTableLiteralData($data, $ner_data, $annotated_canonical_table_model->id);
                         // Аннотирование столбца "RowHeading"
-                        $ranked_row_heading_candidate_entities = $annotator->annotateTableHeading($data,
-                            CanonicalTableAnnotator::ROW_HEADING_TITLE, $row_heading_path);
+                        $annotator->annotateTableHeading($data, CanonicalTableAnnotator::ROW_HEADING_TITLE,
+                            $annotated_canonical_table_model->id);
                         // Аннотирование столбца "ColumnHeading"
-                        $ranked_column_heading_candidate_entities = $annotator->annotateTableHeading($data,
-                            CanonicalTableAnnotator::COLUMN_HEADING_TITLE, $column_heading_path);
+                        $annotator->annotateTableHeading($data,
+                           CanonicalTableAnnotator::COLUMN_HEADING_TITLE,
+                            $annotated_canonical_table_model->id);
                         // Генерация RDF-документа в формате RDF/XML
-                        //$annotator->generateRDFXMLCode();
+                        //$anotator->generateRDFXMLCode();
                     }
                     // Если установлена стратегия аннотирования именованных сущностей
                     if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
@@ -290,52 +286,34 @@ class SpreadsheetController extends Controller
                         $ranked_data_candidate_entities = $annotator->annotateTableEntityData($data, $ner_data);
                     }
 
-                    // Открытие файла на запись для сохранения результатов аннотирования таблицы
-                    $result_file = fopen(Yii::$app->basePath . '\web\results\\' .
-                        $file_name_without_extension . '\results.log', 'a');
-                    // Запись в файл логов результаты аннотирования таблицы
-                    $json = json_encode($ranked_data_candidate_entities, JSON_PRETTY_PRINT);
-                    $json = str_replace('\/', '/', $json);
-                    fwrite($result_file, $json);
-                    fwrite($result_file, PHP_EOL . '**************************************' . PHP_EOL);
-                    $json = json_encode($ranked_row_heading_candidate_entities, JSON_PRETTY_PRINT);
-                    $json = str_replace('\/', '/', $json);
-                    fwrite($result_file, $json);
-                    fwrite($result_file, PHP_EOL . '**************************************' . PHP_EOL);
-                    $json = json_encode($ranked_column_heading_candidate_entities, JSON_PRETTY_PRINT);
-                    $json = str_replace('\/', '/', $json);
-                    fwrite($result_file, $json);
-                    // Закрытие файла
-                    fclose($result_file);
-
-                    // Сохранение информации об аннотированной канонической таблице в БД
-                    $annotated_canonical_table = new AnnotatedCanonicalTable();
-                    $annotated_canonical_table->name = $file_name_without_extension;
-                    $annotated_canonical_table->annotated_dataset = $annotated_dataset->id;
-                    $annotated_canonical_table->save();
-                    // Общее кол-во ячеек канонической таблицы
-                    $total_number = 0;
-                    // Кол-во аннотированных ячеек канонической таблицы
-                    $annotated_entity_number = 0;
                     // Обход массива данных исходной канонической таблицы
                     foreach ($data as $item) {
                         // Создание новой модели строки в канонической таблицы
-                        $annotated_row = new AnnotatedRow();
+                        $annotated_row_model = new AnnotatedRow();
                         // Обход массива строки исходной канонической таблицы
                         foreach ($item as $heading => $value) {
                             if ($heading == CanonicalTableAnnotator::DATA_TITLE) {
                                 // Подсчет общего кол-ва ячеек канонической таблицы
-                                $total_number++;
+                                $annotated_canonical_table_model->total_element_number++;
                                 // Присвоение оригинального значения ячейки
-                                $annotated_row->data = $value;
-                                // Обход всех ранжированных сущностей кандидатов для столбца "DATA"
-                                foreach ($ranked_data_candidate_entities as $entry => $entity)
-                                    // Если значения ячейки совпадают и массив сущностей кандидатов не пустой
-                                    if ($value == $entry && !empty($entity)) {
+                                $annotated_row_model->data = $value;
+                                // Поиск всех значений ячеек столбца с данными "DATA"
+                                $cell_values = CellValue::find()
+                                    ->where(['annotated_canonical_table' => $annotated_canonical_table_model->id,
+                                        'type' => CellValue::DATA])
+                                    ->all();
+                                // Обход всех значений ячеек столбца "DATA"
+                                foreach ($cell_values as $cell_value)
+                                    if ($value == $cell_value->name) {
                                         // Подсчет кол-ва аннотированных ячеек канонической таблицы
-                                        $annotated_entity_number++;
+                                        $annotated_canonical_table_model->annotated_element_number++;
+                                        // Получение первой записи с сущностью кандидатом с самым высоким агрегированным рангом
+                                        $candidate_entity = CandidateEntity::find()
+                                            ->where(['cell_value' => $cell_value->id])
+                                            ->orderBy('aggregated_rank DESC')
+                                            ->one();
                                         // Присвоение значению ячейки референтной сущности кандидата
-                                        $annotated_row->data = $entity;
+                                        $annotated_row_model->data = $candidate_entity->entity;
                                     }
                             }
                             if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE) {
@@ -343,25 +321,36 @@ class SpreadsheetController extends Controller
                                 foreach ($string_array as $key => $string) {
                                     $existing_entity = '';
                                     // Подсчет общего кол-ва ячеек канонической таблицы
-                                    $total_number++;
-                                    // Обход всех ранжированных сущностей кандидатов для столбца "RowHeading"
-                                    foreach ($ranked_row_heading_candidate_entities as $entry => $entity)
-                                        // Если значения ячейки совпадают и массив сущностей кандидатов не пустой
-                                        if ($string == $entry && !empty($entity)) {
+                                    $annotated_canonical_table_model->total_element_number++;
+                                    // Поиск значения ячейки столбца с данными "RowHeading"
+                                    $cell_value = CellValue::find()
+                                        ->where(['annotated_canonical_table' => $annotated_canonical_table_model->id,
+                                            'name' => $string, 'type' => CellValue::ROW_HEADING])
+                                        ->one();
+                                    // Если выборка значения ячейки не пустая и значения ячеек совпадают
+                                    if (!empty($cell_value) && $string == $cell_value->name) {
+                                        // Получение первой записи с сущностью кандидатом с самым высоким агрегированным рангом
+                                        $candidate_entity = CandidateEntity::find()
+                                            ->where(['cell_value' => $cell_value->id])
+                                            ->orderBy('aggregated_rank DESC')
+                                            ->one();
+                                        // Если выборка сущности кандидата не пустая
+                                        if (!empty($candidate_entity)) {
                                             // Подсчет кол-ва аннотированных ячеек канонической таблицы
-                                            $annotated_entity_number++;
+                                            $annotated_canonical_table_model->annotated_element_number++;
                                             // Запоминание референтной сущности кандидата
-                                            $existing_entity = $entity[0][0];
+                                            $existing_entity = $candidate_entity->entity;
                                         }
+                                    }
                                     // Присвоение значению ячейки референтной сущности кандидата
-                                    if ($annotated_row->row_heading != '' && $existing_entity == '')
-                                        $annotated_row->row_heading .= ' | ' . $string;
-                                    if ($annotated_row->row_heading != '' && $existing_entity != '')
-                                        $annotated_row->row_heading .= ' | ' . $existing_entity;
-                                    if ($annotated_row->row_heading == '' && $existing_entity == '')
-                                        $annotated_row->row_heading = $string;
-                                    if ($annotated_row->row_heading == '' && $existing_entity != '')
-                                        $annotated_row->row_heading = $existing_entity;
+                                    if ($annotated_row_model->row_heading != '' && $existing_entity == '')
+                                        $annotated_row_model->row_heading .= ' | ' . $string;
+                                    if ($annotated_row_model->row_heading != '' && $existing_entity != '')
+                                        $annotated_row_model->row_heading .= ' | ' . $existing_entity;
+                                    if ($annotated_row_model->row_heading == '' && $existing_entity == '')
+                                        $annotated_row_model->row_heading = $string;
+                                    if ($annotated_row_model->row_heading == '' && $existing_entity != '')
+                                        $annotated_row_model->row_heading = $existing_entity;
                                 }
                             }
                             if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE) {
@@ -369,35 +358,46 @@ class SpreadsheetController extends Controller
                                 foreach ($string_array as $key => $string) {
                                     $existing_entity = '';
                                     // Подсчет общего кол-ва ячеек канонической таблицы
-                                    $total_number++;
-                                    // Обход всех ранжированных сущностей кандидатов для столбца "ColumnHeading"
-                                    foreach ($ranked_column_heading_candidate_entities as $entry => $entity)
-                                        // Если значения ячейки совпадают и массив сущностей кандидатов не пустой
-                                        if ($string == $entry && !empty($entity)) {
-                                            // Подсчет кол-ва аннотированных ячеек канонической таблицы
-                                            $annotated_entity_number++;
+                                    $annotated_canonical_table_model->total_element_number++;
+                                    // Поиск всех значений ячеек столбца с данными "ColumnHeading"
+                                    $cell_value = CellValue::find()
+                                        ->where(['annotated_canonical_table' => $annotated_canonical_table_model->id,
+                                            'name' => $string, 'type' => CellValue::COLUMN_HEADING])
+                                        ->one();
+                                    // Если выборка значения ячейки не пустая и значения ячеек совпадают
+                                    if (!empty($cell_value) && $string == $cell_value->name) {
+                                        // Получение первой записи с сущностью кандидатом с самым высоким агрегированным рангом
+                                        $candidate_entity = CandidateEntity::find()
+                                            ->where(['cell_value' => $cell_value->id])
+                                            ->orderBy('aggregated_rank DESC')
+                                            ->one();
+                                        // Если выборка сущности кандидата не пустая
+                                        if (!empty($candidate_entity)) {
                                             // Запоминание референтной сущности кандидата
-                                            $existing_entity = $entity[0][0];
+                                            $existing_entity = $candidate_entity->entity;
+                                            // Подсчет кол-ва аннотированных ячеек канонической таблицы
+                                            $annotated_canonical_table_model->annotated_element_number++;
                                         }
+                                    }
                                     // Присвоение значению ячейки референтной сущности кандидата
-                                    if ($annotated_row->column_heading != '' && $existing_entity == '')
-                                        $annotated_row->column_heading .= ' | ' . $string;
-                                    if ($annotated_row->column_heading != '' && $existing_entity != '')
-                                        $annotated_row->column_heading .= ' | ' . $existing_entity;
-                                    if ($annotated_row->column_heading == '' && $existing_entity == '')
-                                        $annotated_row->column_heading = $string;
-                                    if ($annotated_row->column_heading == '' && $existing_entity != '')
-                                        $annotated_row->column_heading = $existing_entity;
+                                    if ($annotated_row_model->column_heading != '' && $existing_entity == '')
+                                        $annotated_row_model->column_heading .= ' | ' . $string;
+                                    if ($annotated_row_model->column_heading != '' && $existing_entity != '')
+                                        $annotated_row_model->column_heading .= ' | ' . $existing_entity;
+                                    if ($annotated_row_model->column_heading == '' && $existing_entity == '')
+                                        $annotated_row_model->column_heading = $string;
+                                    if ($annotated_row_model->column_heading == '' && $existing_entity != '')
+                                        $annotated_row_model->column_heading = $existing_entity;
                                 }
                             }
                         }
                         // Сохранение строки канонической таблицы в БД
-                        $annotated_row->annotated_canonical_table = $annotated_canonical_table->id;
-                        $annotated_row->save();
+                        $annotated_row_model->annotated_canonical_table = $annotated_canonical_table_model->id;
+                        $annotated_row_model->save();
                     }
                     // Поиск всех строк текущей аннотированной канонической таблицы
                     $all_annotated_rows = AnnotatedRow::find()
-                        ->where(['annotated_canonical_table' => $annotated_canonical_table->id])
+                        ->where(['annotated_canonical_table' => $annotated_canonical_table_model->id])
                         ->all();
                     // Формирование и сохранение аннотированной таблицы в файл Excel (XLSX)
                     Excel::export([
@@ -412,39 +412,19 @@ class SpreadsheetController extends Controller
                             'column_heading' => 'ColumnHeading'
                         ],
                     ]);
-                    // Высисление оценки полноты
-                    $recall = $annotated_entity_number / $total_number;
-                    // Открытие файла на запись для сохранения оценки полноты
-                    $runtime_file = fopen(Yii::$app->basePath . '\web\results\runtime.log', 'a');
-                    // Запись в файл логов общего кол-ва элементов в таблице
-                    fwrite($runtime_file, 'Общее кол-во элементов в ' . $file_name_without_extension .
-                        ': ' . $total_number . PHP_EOL);
-                    fwrite($runtime_file, '**********************************************************' . PHP_EOL);
-                    // Запись в файл логов кол-ва аннотированных элементов в таблице
-                    fwrite($runtime_file, 'Кол-во аннотированных элементов в ' . $file_name_without_extension .
-                        ': ' . $annotated_entity_number . PHP_EOL);
-                    fwrite($runtime_file, '**********************************************************' . PHP_EOL);
-                    // Запись в файл логов оценки полноты
-                    fwrite($runtime_file, 'Полнота (recall) для ' . $file_name_without_extension .
-                        ': ' . $recall . PHP_EOL);
-                    // Закрытие файла
-                    fclose($runtime_file);
+                    // Вычисление оценки полноты и запись ее в БД
+                    $annotated_canonical_table_model->recall =
+                        $annotated_canonical_table_model->annotated_element_number /
+                        $annotated_canonical_table_model->total_element_number;
+                    $annotated_canonical_table_model->updateAttributes(['total_element_number',
+                        'annotated_element_number', 'recall']);
                 }
             }
             // Закрытие каталога набора данных
             closedir($handle);
         }
-        // Открытие файла на запись для сохранения времени выполнения скрипта
-        $runtime_file = fopen(Yii::$app->basePath . '\web\results\runtime.log', 'a');
-        // Сохранение времени выполнения скрипта
-        $runtime = round(microtime(true) - $start, 4);
-        // Запись в файл логов времени выполнения скрипта
-        fwrite($runtime_file, '**********************************************************' . PHP_EOL);
-        fwrite($runtime_file, 'Время выполнения скрипта: ' . $runtime . ' сек.' . PHP_EOL);
-        fwrite($runtime_file, '**********************************************************' . PHP_EOL);
-        fwrite($runtime_file, 'Время выполнения скрипта: ' .
-            date("H:i:s",mktime(0, 0, $runtime)) . PHP_EOL);
-        // Закрытие файла
-        fclose($runtime_file);
+        // Вычисление и запись общего времени выполнения аннотирования набора данных в БД
+        $annotated_dataset_model->runtime = round(microtime(true) - $start, 4);
+        $annotated_dataset_model->updateAttributes(['runtime']);
     }
 }
