@@ -221,8 +221,8 @@ class SpreadsheetController extends Controller
      */
     public function actionAnnotate()
     {
-        // Начало отсчета времени выполнения скрипта
-        $start = microtime(true);
+        // Начало отсчета времени обработки всего набора данных
+        $dataset_runtime = microtime(true);
         // Сохранение информации об аннотированном наборе данных электронных таблиц в БД
         $annotated_dataset_model = new AnnotatedDataset();
         $annotated_dataset_model->name = 'test_dataset';
@@ -237,6 +237,8 @@ class SpreadsheetController extends Controller
             while (false !== ($file_name = readdir($handle))) {
                 // Если элемент каталога не является другим каталогом
                 if ($file_name != '.' && $file_name != '..') {
+                    // Начало отсчета времени обработки таблицы
+                    $table_runtime = microtime(true);
                     // Получение данных из файла XSLX
                     $data = Excel::import('web/dataset/' . $file_name, [
                         'setFirstRecordAsKeys' => true,
@@ -416,15 +418,19 @@ class SpreadsheetController extends Controller
                     $annotated_canonical_table_model->recall =
                         $annotated_canonical_table_model->annotated_element_number /
                         $annotated_canonical_table_model->total_element_number;
+                    // Запись времени обработки таблицы
+                    $annotated_canonical_table_model->runtime = round(microtime(true) -
+                        $table_runtime, 4);
+                    // Обновление полей в БД
                     $annotated_canonical_table_model->updateAttributes(['total_element_number',
-                        'annotated_element_number', 'recall']);
+                        'annotated_element_number', 'recall', 'runtime']);
                 }
             }
             // Закрытие каталога набора данных
             closedir($handle);
         }
         // Вычисление и запись общего времени выполнения аннотирования набора данных в БД
-        $annotated_dataset_model->runtime = round(microtime(true) - $start, 4);
+        $annotated_dataset_model->runtime = round(microtime(true) - $dataset_runtime, 4);
         $annotated_dataset_model->updateAttributes(['runtime']);
     }
 }
