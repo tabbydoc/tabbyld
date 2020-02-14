@@ -166,11 +166,57 @@ return [
     'CANDIDATE_ENTITY_MODEL_AGGREGATED_RANK' => 'Aggregated rank',
     'CANDIDATE_ENTITY_MODEL_CELL_VALUE' => 'Cell value',
 
-    /* RelationshipDistance */
-    'RELATIONSHIP_DISTANCE_MODEL_ID' => 'ID',
-    'RELATIONSHIP_DISTANCE_MODEL_CREATED_AT' => 'Created at',
-    'RELATIONSHIP_DISTANCE_MODEL_UPDATED_AT' => 'Updated at',
-    'RELATIONSHIP_DISTANCE_MODEL_DISTANCE' => 'Distance',
-    'RELATIONSHIP_DISTANCE_MODEL_EXECUTION_TIME' => 'Execution time',
-    'RELATIONSHIP_DISTANCE_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+    /* RelationshipRank */
+    'RELATIONSHIP_RANK_MODEL_ID' => 'ID',
+    'RELATIONSHIP_RANK_MODEL_CREATED_AT' => 'Created at',
+    'RELATIONSHIP_RANK_MODEL_UPDATED_AT' => 'Updated at',
+    'RELATIONSHIP_RANK_MODEL_DISTANCE' => 'Rank',
+    'RELATIONSHIP_RANK_MODEL_EXECUTION_TIME' => 'Execution time',
+    'RELATIONSHIP_RANK_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* NerClassRank */
+    'NER_CLASS_RANK_MODEL_ID' => 'ID',
+    'NER_CLASS_RANK_MODEL_CREATED_AT' => 'Created at',
+    'NER_CLASS_RANK_MODEL_UPDATED_AT' => 'Updated at',
+    'NER_CLASS_RANK_MODEL_DISTANCE' => 'Rank',
+    'NER_CLASS_RANK_MODEL_EXECUTION_TIME' => 'Execution time',
+    'NER_CLASS_RANK_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* HeadingRank */
+    'HEADING_RANK_MODEL_ID' => 'ID',
+    'HEADING_RANK_MODEL_CREATED_AT' => 'Created at',
+    'HEADING_RANK_MODEL_UPDATED_AT' => 'Updated at',
+    'HEADING_RANK_MODEL_DISTANCE' => 'Rank',
+    'HEADING_RANK_MODEL_EXECUTION_TIME' => 'Execution time',
+    'HEADING_RANK_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* EntityContext */
+    'ENTITY_CONTEXT_MODEL_ID' => 'ID',
+    'ENTITY_CONTEXT_MODEL_CREATED_AT' => 'Created at',
+    'ENTITY_CONTEXT_MODEL_UPDATED_AT' => 'Updated at',
+    'ENTITY_CONTEXT_MODEL_CONTEXT' => 'Context',
+    'ENTITY_CONTEXT_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* ContextSimilarity */
+    'CONTEXT_SIMILARITY_MODEL_ID' => 'ID',
+    'CONTEXT_SIMILARITY_MODEL_CREATED_AT' => 'Created at',
+    'CONTEXT_SIMILARITY_MODEL_UPDATED_AT' => 'Updated at',
+    'CONTEXT_SIMILARITY_MODEL_DISTANCE' => 'Rank',
+    'CONTEXT_SIMILARITY_MODEL_EXECUTION_TIME' => 'Execution time',
+    'CONTEXT_SIMILARITY_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* ParentClass */
+    'PARENT_CLASS_MODEL_ID' => 'ID',
+    'PARENT_CLASS_MODEL_CREATED_AT' => 'Created at',
+    'PARENT_CLASS_MODEL_UPDATED_AT' => 'Updated at',
+    'PARENT_CLASS_MODEL_CLASS' => 'Class',
+    'PARENT_CLASS_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* SemanticSimilarity */
+    'SEMANTIC_SIMILARITY_MODEL_ID' => 'ID',
+    'SEMANTIC_SIMILARITY_MODEL_CREATED_AT' => 'Created at',
+    'SEMANTIC_SIMILARITY_MODEL_UPDATED_AT' => 'Updated at',
+    'SEMANTIC_SIMILARITY_MODEL_DISTANCE' => 'Rank',
+    'SEMANTIC_SIMILARITY_MODEL_EXECUTION_TIME' => 'Execution time',
+    'SEMANTIC_SIMILARITY_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
 ];

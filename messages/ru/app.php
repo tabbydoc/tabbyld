@@ -166,11 +166,57 @@ return [
     'CANDIDATE_ENTITY_MODEL_AGGREGATED_RANK' => 'Агрегированный ранг',
     'CANDIDATE_ENTITY_MODEL_CELL_VALUE' => 'Значение ячейки',
 
-    /* RelationshipDistance */
-    'RELATIONSHIP_DISTANCE_MODEL_ID' => 'ID',
-    'RELATIONSHIP_DISTANCE_MODEL_CREATED_AT' => 'Создан',
-    'RELATIONSHIP_DISTANCE_MODEL_UPDATED_AT' => 'Обновлен',
-    'RELATIONSHIP_DISTANCE_MODEL_DISTANCE' => 'Расстояние',
-    'RELATIONSHIP_DISTANCE_MODEL_EXECUTION_TIME' => 'Время выполнения',
-    'RELATIONSHIP_DISTANCE_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+    /* RelationshipRank */
+    'RELATIONSHIP_RANK_MODEL_ID' => 'ID',
+    'RELATIONSHIP_RANK_MODEL_CREATED_AT' => 'Создан',
+    'RELATIONSHIP_RANK_MODEL_UPDATED_AT' => 'Обновлен',
+    'RELATIONSHIP_RANK_MODEL_DISTANCE' => 'Ранг',
+    'RELATIONSHIP_RANK_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'RELATIONSHIP_RANK_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* NerClassRank */
+    'NER_CLASS_RANK_MODEL_ID' => 'ID',
+    'NER_CLASS_RANK_MODEL_CREATED_AT' => 'Создан',
+    'NER_CLASS_RANK_MODEL_UPDATED_AT' => 'Обновлен',
+    'NER_CLASS_RANK_MODEL_DISTANCE' => 'Ранг',
+    'NER_CLASS_RANK_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'NER_CLASS_RANK_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* HeadingRank */
+    'HEADING_RANK_MODEL_ID' => 'ID',
+    'HEADING_RANK_MODEL_CREATED_AT' => 'Создан',
+    'HEADING_RANK_MODEL_UPDATED_AT' => 'Обновлен',
+    'HEADING_RANK_MODEL_DISTANCE' => 'Ранг',
+    'HEADING_RANK_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'HEADING_RANK_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* EntityContext */
+    'ENTITY_CONTEXT_MODEL_ID' => 'ID',
+    'ENTITY_CONTEXT_MODEL_CREATED_AT' => 'Создан',
+    'ENTITY_CONTEXT_MODEL_UPDATED_AT' => 'Обновлен',
+    'ENTITY_CONTEXT_MODEL_CONTEXT' => 'Контекст',
+    'ENTITY_CONTEXT_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* ContextSimilarity */
+    'CONTEXT_SIMILARITY_MODEL_ID' => 'ID',
+    'CONTEXT_SIMILARITY_MODEL_CREATED_AT' => 'Создан',
+    'CONTEXT_SIMILARITY_MODEL_UPDATED_AT' => 'Обновлен',
+    'CONTEXT_SIMILARITY_MODEL_DISTANCE' => 'Ранг',
+    'CONTEXT_SIMILARITY_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'CONTEXT_SIMILARITY_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* ParentClass */
+    'PARENT_CLASS_MODEL_ID' => 'ID',
+    'PARENT_CLASS_MODEL_CREATED_AT' => 'Создан',
+    'PARENT_CLASS_MODEL_UPDATED_AT' => 'Обновлен',
+    'PARENT_CLASS_MODEL_CLASS' => 'Класс',
+    'PARENT_CLASS_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* SemanticSimilarity */
+    'SEMANTIC_SIMILARITY_MODEL_ID' => 'ID',
+    'SEMANTIC_SIMILARITY_MODEL_CREATED_AT' => 'Создан',
+    'SEMANTIC_SIMILARITY_MODEL_UPDATED_AT' => 'Обновлен',
+    'SEMANTIC_SIMILARITY_MODEL_DISTANCE' => 'Ранг',
+    'SEMANTIC_SIMILARITY_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'SEMANTIC_SIMILARITY_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
 ];

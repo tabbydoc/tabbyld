@@ -6,8 +6,14 @@ use Yii;
 use vova07\console\ConsoleRunner;
 use BorderCloud\SPARQL\SparqlClient;
 use app\modules\main\models\CellValue;
+use app\modules\main\models\HeadingRank;
+use app\modules\main\models\ParentClass;
+use app\modules\main\models\NerClassRank;
+use app\modules\main\models\EntityContext;
 use app\modules\main\models\CandidateEntity;
-use app\modules\main\models\RelationshipDistance;
+use app\modules\main\models\RelationshipRank;
+use app\modules\main\models\ContextSimilarity;
+use app\modules\main\models\SemanticSimilarity;
 
 /**
  * CanonicalTableAnnotator - класс семантического интерпретатора (аннотатора) данных канонических электронных таблиц.
@@ -65,9 +71,6 @@ class CanonicalTableAnnotator
     public $parent_row_heading_classes = array();
     // Массив сс определенными родительскими классами для сущностей в "ColumnHeading"
     public $parent_column_heading_classes = array();
-
-    public $log = '';           // Текст с записью логов хода выполнения аннотации таблицы
-    public $all_query_time = 0; // Общее время выполнения всех SPARQL-запросов
 
     /**
      * Удаление каталога со всеми файлами.
@@ -228,11 +231,6 @@ class CanonicalTableAnnotator
             } LIMIT 100";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
-
-        // Запить журнала
-        $this->log .= 'Запрос для ' . $value . ': ' . $rows['query_time'] . PHP_EOL;
-        $this->all_query_time += $rows['query_time'];
-
         // Если нет ошибок при запросе и есть результат запроса
         if (!$error && $rows['result']['rows']) {
             // Формирование массива сущностей кандидатов
@@ -257,11 +255,11 @@ class CanonicalTableAnnotator
         $sparql_client = new SparqlClient();
         $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
         // SPARQL-запрос к DBpedia ontology для поиска родительских классов для сущности
-        $query = "SELECT ?class
+        $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+            SELECT ?class
             FROM <http://dbpedia.org>
             WHERE {
-                <$entity> ?property ?class
-                FILTER (strstarts(str(?class), 'http://dbpedia.org/ontology/'))
+                <$entity> ?property ?class . FILTER (strstarts(str(?class), str(dbo:)))
             } LIMIT 100";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
@@ -305,7 +303,7 @@ class CanonicalTableAnnotator
      * @param $heading_title - имя столбца
      * @param $canonical_table_id - идентификатор канонической таблицы в БД
      */
-    public function getRelationshipDistance($heading_title, $canonical_table_id)
+    public function getRelationshipRank($heading_title, $canonical_table_id)
     {
         $path = '';
         $cell_values = array();
@@ -360,7 +358,7 @@ class CanonicalTableAnnotator
             foreach ($candidate_entities as $candidate_entity) {
                 // Параллельное нахождение связей между сущностями кандидатов
                 $cr = new ConsoleRunner(['file' => '@app/yii']);
-                $cr->run('spreadsheet/find-relationship-distance "' . $cell_value->name .'" "' .
+                $cr->run('spreadsheet/find-relationship-rank "' . $cell_value->name .'" "' .
                     $candidate_entity->entity . '" ' . $path);
             }
         }
@@ -406,20 +404,20 @@ class CanonicalTableAnnotator
                                     ->where(['entity' => $candidate_entity_name, 'cell_value' => $cell_value->id])
                                     ->one();
                                 // Сохранение оценки близости сущностей кандидатов по связям между друг другом в БД
-                                $relationship_distance_model = new RelationshipDistance();
-                                $relationship_distance_model->distance = (int)$text;
-                                $relationship_distance_model->execution_time = 0;
-                                $relationship_distance_model->candidate_entity = $candidate_entity->id;
-                                $relationship_distance_model->save();
+                                $relationship_rank_model = new RelationshipRank();
+                                $relationship_rank_model->rank = (int)$text;
+                                $relationship_rank_model->execution_time = 0;
+                                $relationship_rank_model->candidate_entity = $candidate_entity->id;
+                                $relationship_rank_model->save();
                             }
                             // Если текущая строка является временем выполнения
                             if ($pos !== false)
-                                if (!empty($relationship_distance_model)) {
+                                if (!empty($relationship_rank_model)) {
                                     // Извлечение времени выполнения из строки
                                     $rest = substr($text, 23);
                                     // Обновление времени выполнения в БД
-                                    $relationship_distance_model->execution_time = (double)$rest;
-                                    $relationship_distance_model->updateAttributes(['execution_time']);
+                                    $relationship_rank_model->execution_time = (double)$rest;
+                                    $relationship_rank_model->updateAttributes(['execution_time']);
                                 }
                         }
                         // Закрытие файла
@@ -457,12 +455,12 @@ class CanonicalTableAnnotator
                 // Нормализация рангов (расстояния) Левенштейна
                 $normalized_levenshtein_distance = 1 - $candidate_entity->levenshtein_distance / 100;
                 // Поиск оценки (ранга) связей между сущностями кандидатами для текущей сущности кандидата
-                $relationship_distance = RelationshipDistance::find()
+                $relationship_rank = RelationshipRank::find()
                     ->where(['candidate_entity' => $candidate_entity->id])
                     ->one();
                 // Вычисление агрегированной оценки (ранга)
                 $candidate_entity->aggregated_rank = $a_weight_factor * $normalized_levenshtein_distance +
-                    $b_weight_factor * $relationship_distance->distance;
+                    $b_weight_factor * $relationship_rank->rank;
                 // Сохранение агрегированной оценки (ранга) в БД
                 $candidate_entity->updateAttributes(['aggregated_rank']);
             }
@@ -470,131 +468,105 @@ class CanonicalTableAnnotator
     }
 
     /**
-     * Определение близости сущностей кандидатов к классу, который задан NER-меткой.
+     * Определение близости сущности кандидата к классу, который задан NER-меткой.
      *
      * @param $ner_label - NER-метка присвоенная значению ячейки в столбце DATA
-     * @param $candidate_entities - массив сущностей кандидатов
-     * @return array - ранжированный массив сущностей кандидатов
+     * @param $candidate_entity_name - имя сущности кандидата
+     * @param $candidate_entity_id - идентификатор сущности кандидата
      */
-    public function getNerClassDistance($ner_label, $candidate_entities)
+    public function getNerClassRank($ner_label, $candidate_entity_name, $candidate_entity_id)
     {
-        // Массив ранжированных сущностей кандидатов
-        $ranked_candidate_entities = array();
         // Определение класса из онтологии DBpedia для соответствующей метки NER
+        $ner_class = '';
         if ($ner_label == self::LOCATION_NER_LABEL)
             $ner_class = self::LOCATION_ONTOLOGY_CLASS;
         if ($ner_label == self::PERSON_NER_LABEL)
             $ner_class = self::PERSON_ONTOLOGY_CLASS;
         if ($ner_label == self::ORGANIZATION_NER_LABEL)
             $ner_class = self::ORGANISATION_ONTOLOGY_CLASS;
-        // Массив названий URI DBpedia
-        $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION, self::DBPEDIA_PROPERTY_SECTION);
-        // Обход всех сущностей из набора кандидатов
-        foreach ($candidate_entities as $candidate_entity) {
-            // Удаление адреса URI у сущности из набора кандидатов
-            $candidate_entity_name = str_replace($URIs, '', $candidate_entity);
-            // Подключение к DBpedia
-            $sparql_client = new SparqlClient();
-            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-            // SPARQL-запрос к DBpedia для определения глубины связи текущей сущности из набора кандидатов с классом
-            $query = "SELECT count(?intermediate)/2 as ?depth
-                FROM <http://dbpedia.org>
-                WHERE { <$candidate_entity> rdf:type/rdfs:subClassOf* ?intermediate .
-                    ?intermediate rdfs:subClassOf* <$ner_class>
-                }";
-            $rows = $sparql_client->query($query, 'rows');
-            $error = $sparql_client->getErrors();
-
-            // Запить журнала
-            $this->log .= 'Запрос для определения глубины связи для ' . $candidate_entity_name . ': ' .
-                $rows['query_time'] . PHP_EOL;
-            $this->all_query_time += $rows['query_time'];
-
-            // Вычисляемый ранг (оценка) для сущности кандидата
-            $rank = 0;
-            // Если нет ошибок при запросе, есть результат запроса и глубина не 0, то
-            // вычисление ранга (оценки) для текущей сущности из набора кандидатов в соответствии с глубиной
-            if (!$error && $rows['result']['rows'] && $rows['result']['rows'][0]['depth'] != 0)
-                $rank = 1 / $rows['result']['rows'][0]['depth'];
-            // Формирование массива ранжированных сущностей кандидатов
-            array_push($ranked_candidate_entities, [$candidate_entity, $rank]);
-        }
-
-        return $ranked_candidate_entities;
+        // Подключение к DBpedia
+        $sparql_client = new SparqlClient();
+        $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+        // SPARQL-запрос к DBpedia для определения глубины связи текущей сущности из набора кандидатов с классом
+        $query = "SELECT count(?intermediate)/2 as ?depth
+            FROM <http://dbpedia.org>
+            WHERE { <$candidate_entity_name> rdf:type/rdfs:subClassOf* ?intermediate .
+                ?intermediate rdfs:subClassOf* <$ner_class>
+            }";
+        $rows = $sparql_client->query($query, 'rows');
+        $error = $sparql_client->getErrors();
+        // Вычисляемый ранг (оценка) для сущности кандидата
+        $rank = 0;
+        // Если нет ошибок при запросе, есть результат запроса и глубина не 0, то
+        // вычисление ранга (оценки) для текущей сущности из набора кандидатов в соответствии с глубиной
+        if (!$error && $rows['result']['rows'] && $rows['result']['rows'][0]['depth'] != 0)
+            $rank = 1 / $rows['result']['rows'][0]['depth'];
+        // Сохранение ранга (оценки) близости сущности кандидата к классу, который задан NER-меткой, в БД
+        $ner_class_rank_model = new NerClassRank();
+        $ner_class_rank_model->rank = (int)$rank;
+        $ner_class_rank_model->execution_time = $rows['query_time'];
+        $ner_class_rank_model->candidate_entity = $candidate_entity_id;
+        $ner_class_rank_model->save();
     }
 
     /**
-     * Определение сходства сущностей кандидатов по заголовкам таблицы.
+     * Определение сходства сущности кандидата по заголовкам таблицы.
      *
      * @param $formed_row_heading_labels - массив всех заголовков строки в канонической таблице
-     * @param $candidate_entities - массив сущностей кандидатов
-     * @return array - ранжированный массив сущностей кандидатов
+     * @param $candidate_entity_name - имя сущности кандидата
+     * @param $candidate_entity_id - идентификатор сущности кандидата
      */
-    public function getHeadingDistance($formed_row_heading_labels, $candidate_entities)
+    public function getHeadingRank($formed_row_heading_labels, $candidate_entity_name, $candidate_entity_id)
     {
-        // Массив ранжированных сущностей кандидатов
-        $ranked_candidate_entities = array();
-        // Массив названий URI DBpedia
-        $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION, self::DBPEDIA_PROPERTY_SECTION);
-        // Обход всех сущностей из набора кандидатов
-        foreach ($candidate_entities as $candidate_entity) {
-            // Удаление адреса URI у сущности из набора кандидатов
-            $candidate_entity_name = str_replace($URIs, '', $candidate_entity);
-            // Подключение к DBpedia
-            $sparql_client = new SparqlClient();
-            $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
-            // SPARQL-запрос к DBpedia для поиска всех классов, которым принадлежит данная сущность
-            $section = self::DBPEDIA_ONTOLOGY_SECTION;
-            $query = "SELECT ?class
-                FROM <http://dbpedia.org>
-                WHERE { <$candidate_entity> rdf:type ?class . FILTER(strstarts(str(?class), '$section'))
-                }";
-            $rows = $sparql_client->query($query, 'rows');
-            $error = $sparql_client->getErrors();
-
-            // Запить журнала
-            $this->log .= 'Запрос для поиска всех классов для ' . $candidate_entity_name . ': ' .
-                $rows['query_time'] . PHP_EOL;
-            $this->all_query_time += $rows['query_time'];
-
-            // Если нет ошибок при запросе и есть результат запроса
-            if (!$error && $rows['result']['rows']) {
-                $rank = 100;
-                // Обход всех найденных классов для сущности кандидата
-                foreach ($rows['result']['rows'] as $item) {
-                    $distance = 100;
-                    // Удаление адреса URI у класса
-                    $class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION, '', $item['class']);
-                    // Обход всех заголовков в строке таблицы
-                    foreach ($formed_row_heading_labels as $heading_label) {
-                        // Вычисление расстояния Левенштейна между классом и текущим названием заголовка
-                        $current_distance = levenshtein($class_name, $heading_label);
-                        // Определение наименьшего расстояния Левенштейна
-                        if ($current_distance < $distance)
-                            $distance = $current_distance;
-                    }
-                    // Определение наименьшего расстояния Левенштейна для текущего класса
-                    if ($distance < $rank)
-                        $rank = $distance;
+        // Подключение к DBpedia
+        $sparql_client = new SparqlClient();
+        $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
+        $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+            SELECT ?class
+            FROM <http://dbpedia.org>
+            WHERE { <$candidate_entity_name> rdf:type ?class . FILTER(strstarts(str(?class), str(dbo:))) }";
+        $rows = $sparql_client->query($query, 'rows');
+        $error = $sparql_client->getErrors();
+        // Вычисляемый ранг (оценка) для сущности кандидата
+        $rank = 100;
+        // Если нет ошибок при запросе и есть результат запроса
+        if (!$error && $rows['result']['rows']) {
+            // Обход всех найденных классов для сущности кандидата
+            foreach ($rows['result']['rows'] as $item) {
+                $distance = 100;
+                // Удаление адреса URI у класса
+                $class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION, '', $item['class']);
+                // Обход всех заголовков в строке таблицы
+                foreach ($formed_row_heading_labels as $heading_label) {
+                    // Вычисление расстояния Левенштейна между классом и текущим названием заголовка
+                    $current_distance = levenshtein($class_name, $heading_label);
+                    // Определение наименьшего расстояния Левенштейна
+                    if ($current_distance < $distance)
+                        $distance = $current_distance;
                 }
-                // Формирование массива ранжированных сущностей кандидатов
-                array_push($ranked_candidate_entities, [$candidate_entity, $rank]);
+                // Определение наименьшего расстояния Левенштейна для текущего класса
+                if ($distance < $rank)
+                    $rank = $distance;
             }
         }
-
-        return $ranked_candidate_entities;
+        // Сохранение ранга (оценки) сходства сущности кандидата по заголовкам таблицы в БД
+        $heading_rank_model = new HeadingRank();
+        $heading_rank_model->rank = (int)$rank;
+        $heading_rank_model->execution_time = $rows['query_time'];
+        $heading_rank_model->candidate_entity = $candidate_entity_id;
+        $heading_rank_model->save();
     }
 
     /**
      * Определение сходства сущностей кандидатов по семантической близости.
      *
      * @param $all_candidate_entities - массив для всех массивов сущностей кандидатов
-     * @return array - ранжированный массив сущностей кандидатов
+     * @param $canonical_table_id
      */
-    public function getSemanticSimilarityDistance($all_candidate_entities)
+    public function getSemanticSimilarityDistance($all_candidate_entities, $canonical_table_id)
     {
         // Массив всех ранжированных сущностей кандидатов
-        $global_ranked_candidate_entities = array();
+        //$global_ranked_candidate_entities = array();
         // Сравнение классов сущностей кандидатов между собой
         foreach ($all_candidate_entities as $current_entry_name => $current_candidate_entities) {
             $global_ranked_classes = array();
@@ -610,10 +582,10 @@ class CanonicalTableAnnotator
                                     $min_distance = 100;
                                     foreach ($comparative_parent_classes as $comparative_parent_class) {
                                         // Удаление адреса URI у классов
-                                        $current_parent_class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION, '',
-                                            $current_parent_class);
-                                        $comparative_parent_class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION, '',
-                                            $comparative_parent_class);
+                                        $current_parent_class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION,
+                                            '', $current_parent_class);
+                                        $comparative_parent_class_name = str_replace(self::DBPEDIA_ONTOLOGY_SECTION,
+                                            '', $comparative_parent_class);
                                         // Вычисление расстояния Левенштейна между названиями классов
                                         $distance = levenshtein($current_parent_class_name,
                                             $comparative_parent_class_name);
@@ -674,21 +646,30 @@ class CanonicalTableAnnotator
                 $coefficient = 1000;
             if ($max_rank < 10000 && $max_rank >= 1000)
                 $coefficient = 10000;
-            // Массив сущностей кандидатов с результирующими рангами
-            $ranked_candidate_entities = array();
-            // Расчет результирующего ранга для сущностей кандидатов
-            foreach ($intermediate_candidate_entities as $intermediate_candidate_entity)
-                array_push($ranked_candidate_entities, [$intermediate_candidate_entity[0],
-                    ($intermediate_candidate_entity[1] / $coefficient)]);
-            // Формирование массива всех ранжированных сущностей кандидатов
-            $global_ranked_candidate_entities[$current_entry_name] = $ranked_candidate_entities;
-
-            // Запить журнала
-            $this->log .= 'Сформирован массив ранжированных сущностей кандидатов для ' .
-                $current_entry_name . ': ' . PHP_EOL;
+            // Поиск всех значений ячеек для текущей канонической таблицы в БД
+            $cell_values = CellValue::find()
+                ->where(['type' => CellValue::DATA, 'annotated_canonical_table' => $canonical_table_id])
+                ->all();
+            // Обход всех значений ячеек текущей канонической таблицы
+            foreach ($cell_values as $cell_value)
+                if ($cell_value->name == $current_entry_name) {
+                    // Поиск всех сущностей кандидатов для текущего значения чейки в БД
+                    $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+                    // Обход всех сущностей кандидатов из выборки
+                    foreach ($candidate_entities as $candidate_entity)
+                        foreach ($intermediate_candidate_entities as $intermediate_candidate_entity)
+                            if ($candidate_entity->entity == $intermediate_candidate_entity[0]) {
+                                // Поиск записи о семантической близости для текущей сущности кандидата
+                                $semantic_similarity = SemanticSimilarity::find()
+                                    ->where(['candidate_entity' => $candidate_entity->id])
+                                    ->one();
+                                // Расчет результирующего ранга для сущностей кандидатов
+                                $semantic_similarity->rank = $intermediate_candidate_entity[1] / $coefficient;
+                                // Обновление ранга (оценки) сходства сущности кандидата по семантической близости
+                                $semantic_similarity->updateAttributes(['rank']);
+                            }
+                }
         }
-
-        return $global_ranked_candidate_entities;
     }
 
     /**
@@ -750,29 +731,21 @@ class CanonicalTableAnnotator
         $sparql_client = new SparqlClient();
         $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
         // SPARQL-запрос к DBpedia для поиска всех триплетов связанных с сущностью кандидатом
-        $query = "SELECT ?subject ?object
+        $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+            PREFIX dbr: <http://dbpedia.org/resource/>
+            SELECT ?subject ?object
             FROM <http://dbpedia.org>
             WHERE {
                 { <$candidate_entity> ?property ?object .
-                    FILTER(strstarts(str(?object), 'http://dbpedia.org/ontology/') ||
-                        strstarts(str(?object), 'http://dbpedia.org/resource/')) .
-                    FILTER(strstarts(str(?property), 'http://dbpedia.org/ontology/') ||
-                        strstarts(str(?property), 'http://dbpedia.org/resource/'))
+                    FILTER(strstarts(str(?object), str(dbo:)) || strstarts(str(?object), str(dbr:))) .
+                    FILTER(strstarts(str(?property), str(dbo:)) || strstarts(str(?property), str(dbr:)))
                 } UNION { ?subject ?property <$candidate_entity> .
-                    FILTER(strstarts(str(?subject), 'http://dbpedia.org/ontology/') ||
-                        strstarts(str(?subject), 'http://dbpedia.org/resource/')) .
-                    FILTER(strstarts(str(?property), 'http://dbpedia.org/ontology/') ||
-                        strstarts(str(?property), 'http://dbpedia.org/resource/'))
+                    FILTER(strstarts(str(?subject), str(dbo:)) || strstarts(str(?subject), str(dbr:))) .
+                    FILTER(strstarts(str(?property), str(dbo:)) || strstarts(str(?property), str(dbr:)))
                 }
             }";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
-
-        // Запить журнала
-        $this->log .= 'Запрос поиска контекста для ' . $candidate_entity . ': ' .
-            $rows['query_time'] . PHP_EOL;
-        $this->all_query_time += $rows['query_time'];
-
         // Если нет ошибок при запросе и есть результат запроса
         if (!$error && $rows['result']['rows']) {
             // Формирование массива
@@ -792,128 +765,126 @@ class CanonicalTableAnnotator
      * Определение сходства сущностей кандидатов по контексту упоминания сущности.
      *
      * @param $data - данные каноничечкой таблицы
-     * @param $entry - значение ячейки данных из канонической таблицы
-     * @param $candidate_entities - массив всех сущностей кандидатов для текущего значения ячейки
-     * @return array - ранжированный массив сущностей кандидатов
+     * @param $cell_values - все значения ячеек данных из канонической таблицы
      */
-    public function getContextSimilarityDistance($data, $entry, $candidate_entities)
+    public function getContextSimilarity($data, $cell_values)
     {
-        // Массив ранжированных сущностей кандидатов
-        $ranked_candidate_entities = array();
-        // Определение контекста текущего значения ячейки данных таблицы
-        $current_entry_context = $this->getEntryContext($data, $entry);
-        // Обход сущностей кандидатов
-        foreach ($candidate_entities as $candidate_entity) {
-            // Массив названий URI DBpedia
-            $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION);
-            // Определение контекста текущей сущности кандидата
-            $current_entity_context = $this->getEntityContext($candidate_entity);
-            // Установка первоначального ранга
-            $rank = 0;
-            // Если контекст сущности кандидата определен
-            if ($current_entity_context)
+        // Массив названий URI DBpedia
+        $URIs = array(self::DBPEDIA_ONTOLOGY_SECTION, self::DBPEDIA_RESOURCE_SECTION);
+
+        // Обход всех значений ячеек текущей канонической таблицы
+        foreach ($cell_values as $cell_value) {
+            // Поиск всех сущностей кандидатов для текущего значения чейки в БД
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            // Обход сущностей кандидатов
+            foreach ($candidate_entities as $candidate_entity) {
+                // Параллельное определение контекста текущей сущности кандидата
+                $cr = new ConsoleRunner(['file' => '@app/yii']);
+                $cr->run('spreadsheet/get-entity-context "' . $candidate_entity->entity . '" ' .
+                    $candidate_entity->id);
+            }
+        }
+        // Ожидание формирования контекста сущностей из набора кандидатов
+        foreach ($cell_values as $cell_value) {
+            $context_similarity_count = 0;
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            $candidate_entity_count = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->count();
+            while ($context_similarity_count != $candidate_entity_count) {
+                $context_similarity_count = 0;
+                foreach ($candidate_entities as $candidate_entity)
+                    $context_similarity_count += ContextSimilarity::find()
+                        ->where(['candidate_entity' => $candidate_entity->id])
+                        ->count();
+                sleep(1);
+            }
+        }
+        // Ожидание формирования контекста сущностей из набора кандидатов
+        foreach ($cell_values as $cell_value) {
+            // Определение контекста текущего значения ячейки данных таблицы
+            $current_entry_context = $this->getEntryContext($data, $cell_value->name);
+            // Поиск всех сущностей кандидатов для текущего значения чейки в БД
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            // Обход сущностей кандидатов
+            foreach ($candidate_entities as $candidate_entity) {
+                // Поиск всех сущностей определяющих контекст для текущей сущности кандидата в БД
+                $current_entity_context = EntityContext::find()
+                    ->where(['candidate_entity' => $candidate_entity->id])
+                    ->all();
+                // Установка первоначального ранга
+                $rank = 0;
                 // Сравнение контекста значения ячейки с контекстом сущности кандидата
                 foreach ($current_entry_context as $entry_name)
                     foreach ($current_entity_context as $entity) {
                         // Удаление адреса URI у сущности кандидата
-                        $entity_name = str_replace($URIs, '', $entity);
+                        $entity_name = str_replace($URIs, '', $entity->context);
                         // Если названия концептов из двух контекстов совпадают (расстояние Левенштейна между ними = 0)
                         if (levenshtein($entry_name, $entity_name) == 0)
                             // Инкремент текущего ранга
                             $rank += 1;
                     }
-            // Формирование массива ранжированных сущностей кандидатов
-            array_push($ranked_candidate_entities, [$candidate_entity, $rank]);
+                // Поиск в сходства контекста для текущей сущности кандидата в БД
+                $context_similarity = ContextSimilarity::find()
+                    ->where(['candidate_entity' => $candidate_entity->id])
+                    ->one();
+                // Обновление ранга (оценки) сходства сущностей кандидатов по контексту упоминания сущности
+                $context_similarity->rank = (int)$rank;
+                $context_similarity->updateAttributes(['rank']);
+            }
         }
-
-        return $ranked_candidate_entities;
     }
 
     /**
      * Получение агрегированных оценок (рангов) сущностей кандидатов для столбца с данными (именоваными сущностями).
      *
-     * @param $levenshtein_distance_candidate_entities - ранжированный массив сущностей кандидатов по расстоянию Левенштейна
-     * @param $a_weight_factor - весовой фактор А для определения важности оценки расстояния Левенштейна
-     * @param $ner_class_distance_candidate_entities - ранжированный массив сущностей кандидатов по классам, определенных NER-метками
-     * @param $b_weight_factor - весовой фактор B для определения важности оценки сходства по классам, определенных NER-метками
-     * @param $heading_distance_candidate_entities - ранжированный массив сущностей кандидатов по заголовкам
-     * @param $c_weight_factor - весовой фактор С для определения важности оценки сходства по заголовкам
-     * @param $semantic_similarity_distance_candidate_entities - ранжированный массив сущностей кандидатов по семантической близости
-     * @param $d_weight_factor - весовой фактор D для определения важности оценки сходства по семантической близости
-     * @param $context_similarity_distance_candidate_entities - ранжированный массив сущностей кандидатов по контексту упоминания сущности
-     * @param $e_weight_factor - весовой фактор E для определения важности оценки сходства по контексту упоминания сущности
-     * @return array - ранжированный массив сущностей кандидатов с агрегированными оценками
+     * @param $canonical_table_id - идентификатор канонической таблицы в БД
+     * @param $ld_weight_factor - весовой фактор А для определения важности оценки расстояния Левенштейна
+     * @param $ncr_weight_factor - весовой фактор B для определения важности оценки сходства по классам, определенных NER-метками
+     * @param $hr_weight_factor - весовой фактор С для определения важности оценки сходства по заголовкам
+     * @param $cs_weight_factor - весовой фактор D для определения важности оценки сходства по семантической близости
+     * @param $ss_weight_factor - весовой фактор E для определения важности оценки сходства по контексту упоминания сущности
      */
-    public function getAggregatedNamedEntityRanks($levenshtein_distance_candidate_entities, $a_weight_factor,
-                                                  $ner_class_distance_candidate_entities, $b_weight_factor,
-                                                  $heading_distance_candidate_entities, $c_weight_factor,
-                                                  $semantic_similarity_distance_candidate_entities, $d_weight_factor,
-                                                  $context_similarity_distance_candidate_entities, $e_weight_factor)
+    public function getAggregatedNamedEntityRanks($canonical_table_id, $ld_weight_factor, $ncr_weight_factor,
+                                                  $hr_weight_factor, $cs_weight_factor, $ss_weight_factor)
     {
-        $ranked_candidate_entities = array();
-        // Обход массива с наборами ранжированных сущностей кандидатов по расстоянию Левенштейна
-        foreach ($levenshtein_distance_candidate_entities as $ld_entry => $ld_entities) {
-            // Массив для хранения агрегированных оценок
-            $full_distance_array = array();
-            //
-            foreach ($ld_entities as $levenshtein_distance_candidate_entity) {
-                // Текущий ранг сущности кандидата
-                $full_rank = 0;
+        // Поиск всех значений ячеек для столбца с данными "DATA"
+        $cell_values = CellValue::find()
+            ->where(['type' => CellValue::DATA, 'annotated_canonical_table' => $canonical_table_id])
+            ->all();
+        // Обход всех значений ячеек текущей канонической таблицы для столбца с данными "DATA"
+        foreach ($cell_values as $cell_value) {
+            // Поиск всех сущностей кандидатов для текущего значения ячейки в БД
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            // Обход всех сущностей кандидатов из выборки
+            foreach ($candidate_entities as $candidate_entity) {
                 // Нормализация рангов (расстояния) Левенштейна
-                $normalized_levenshtein_distance = 1 - $levenshtein_distance_candidate_entity[1] / 100;
-                // Обход массива с наборами ранжированных сущностей кандидатов по классам, определенных NER-метками
-                foreach ($ner_class_distance_candidate_entities as $ncd_entry => $ncd_entities)
-                    if ($ld_entry == $ncd_entry)
-                        foreach ($ncd_entities as $ner_class_distance_candidate_entity)
-                            if ($levenshtein_distance_candidate_entity[0] ==
-                                $ner_class_distance_candidate_entity[0]) {
-                                // Вычисление агрегированной оценки (ранга)
-                                $full_rank = $a_weight_factor * $normalized_levenshtein_distance +
-                                    $b_weight_factor * $ner_class_distance_candidate_entity[1];
-                            }
-                // Обход массива с наборами ранжированных сущностей кандидатов по заголовкам
-                foreach ($heading_distance_candidate_entities as $hd_entry => $hd_entities)
-                    if ($ld_entry == $hd_entry)
-                        foreach ($hd_entities as $heading_distance_candidate_entity)
-                            if ($levenshtein_distance_candidate_entity[0] ==
-                                $heading_distance_candidate_entity[0]) {
-                                // Вычисление агрегированной оценки (ранга)
-                                $full_rank += $c_weight_factor * $heading_distance_candidate_entity[1];
-                            }
-                // Обход массива с наборами ранжированных сущностей кандидатов по семантической близости
-                foreach ($semantic_similarity_distance_candidate_entities as $ssd_entry => $ssd_entities)
-                    if ($ld_entry == $ssd_entry)
-                        foreach ($ssd_entities as $semantic_similarity_distance_candidate_entity)
-                            if ($levenshtein_distance_candidate_entity[0] ==
-                                $semantic_similarity_distance_candidate_entity[0]) {
-                                // Вычисление агрегированной оценки (ранга)
-                                $full_rank += $d_weight_factor * $semantic_similarity_distance_candidate_entity[1];
-                            }
-                // Обход массива с наборами ранжированных сущностей кандидатов по контексту упоминания сущности
-                foreach ($context_similarity_distance_candidate_entities as $csd_entry => $csd_entities)
-                    if ($ld_entry == $csd_entry)
-                        foreach ($csd_entities as $context_similarity_distance_candidate_entity)
-                            if ($levenshtein_distance_candidate_entity[0] ==
-                                $context_similarity_distance_candidate_entity[0]) {
-                                // Вычисление агрегированной оценки (ранга)
-                                $full_rank += $e_weight_factor * $context_similarity_distance_candidate_entity[1];
-                            }
-                // Формирование массива ранжированных сущностей кандидатов с агрегированной оценкой
-                array_push($full_distance_array, [$levenshtein_distance_candidate_entity[0], $full_rank]);
+                $normalized_levenshtein_distance = 1 - $candidate_entity->levenshtein_distance / 100;
+                // Поиск оценки (ранга) сходства между сущностью из набора кандидатов и классом, определенного NER-меткой
+                $ner_class_rank = NerClassRank::find()
+                    ->where(['candidate_entity' => $candidate_entity->id])
+                    ->one();
+                // Поиск оценки (ранга) сходства между сущностью из набора кандидатов по заголовкам
+                $heading_rank = HeadingRank::find()
+                    ->where(['candidate_entity' => $candidate_entity->id])
+                    ->one();
+                // Нормализация рангов (расстояния) Левенштейна
+                $normalized_heading_rank = 1 - $heading_rank->rank / 100;
+                // Поиск оценки (ранга) сходства между сущностями из набора кандидатов по контексту упоминания сущности
+                $context_similarity_rank = ContextSimilarity::find()
+                    ->where(['candidate_entity' => $candidate_entity->id])
+                    ->one();
+                // Поиск оценки (ранга) сходства между сущностями из набора кандидатов по семантической близости
+                $semantic_similarity_rank = SemanticSimilarity::find()
+                    ->where(['candidate_entity' => $candidate_entity->id])
+                    ->one();
+                // Вычисление агрегированной оценки (ранга)
+                $candidate_entity->aggregated_rank = $ld_weight_factor * $normalized_levenshtein_distance +
+                    $ncr_weight_factor * $ner_class_rank->rank + $hr_weight_factor * $normalized_heading_rank +
+                    $cs_weight_factor * $context_similarity_rank->rank +
+                    $ss_weight_factor * $semantic_similarity_rank->rank;
+                // Сохранение агрегированной оценки (ранга) в БД
+                $candidate_entity->updateAttributes(['aggregated_rank']);
             }
-            // Сортировка массива ранжированных сущностей кандидатов по убыванию их ранга
-            for ($i = 0; $i < count($full_distance_array); $i++)
-                for ($j = $i + 1; $j < count($full_distance_array); $j++)
-                    if ($full_distance_array[$i][1] <= $full_distance_array[$j][1]) {
-                        $temp = $full_distance_array[$j];
-                        $full_distance_array[$j] = $full_distance_array[$i];
-                        $full_distance_array[$i] = $temp;
-                    }
-            // Формирование массива ранжированных сущностей кандидатов для текущего значения ячейки
-            $ranked_candidate_entities[$ld_entry] = $full_distance_array;
         }
-
-        return $ranked_candidate_entities;
     }
 
     /**
@@ -938,7 +909,7 @@ class CanonicalTableAnnotator
                 }
         // Обход массива корректных значений заголовков столбцов для поиска классов и концептов
         foreach ($formed_heading_labels as $key => $heading_label) {
-            // Параллельное формирование сущностей кандидатов (классов и объектов)
+            // Параллельное формирование сущностей кандидатов
             $cr = new ConsoleRunner(['file' => '@app/yii']);
             $cr->run('spreadsheet/get-candidate-entities "' . $heading_label . '" "' .
                 $key . '" ' . $heading_title . ' ' . $canonical_table_id);
@@ -974,7 +945,7 @@ class CanonicalTableAnnotator
             $this->getLevenshteinDistance(self::getNormalizedEntry($cell_value->name), $candidate_entities);
         }
         // Нахождение связей между сущностями кандидатов
-        $this->getRelationshipDistance($heading_title, $canonical_table_id);
+        $this->getRelationshipRank($heading_title, $canonical_table_id);
         // Агрегирование оценок (рангов) для сущностей кандидатов и сохранение их в БД
         $this->getAggregatedHeadingRanks($canonical_table_id, 1, 1);
     }
@@ -1007,7 +978,7 @@ class CanonicalTableAnnotator
         // Обход массива корректных значений столбца с данными для поиска подходящих объектов или классов
         foreach ($formed_data_entries as $key => $entry)
             foreach ($formed_ner_labels as $ner_key => $ner_label)
-                if ($key == $ner_key) {
+                if ($key === $ner_key) {
                     // NER-метка по умолчанию
                     $ner_resource = self::NONE_NER_LABEL;
                     // Определение объекта из онтологии DBpedia для соответствующей метки NER
@@ -1040,10 +1011,10 @@ class CanonicalTableAnnotator
      * Аннотирование содержимого столбца "DATA" с именованными сущностями.
      *
      * @param $data - данные каноничечкой таблицы
-     * @param $ner_labels - данные с NER-метками
-     * @return array - массив с результатми поиска концептов в онтологии DBpedia
+     * @param $ner_data - данные с NER-метками
+     * @param $canonical_table_id - идентификатор канонической таблицы в БД
      */
-    public function annotateTableEntityData($data, $ner_labels)
+    public function annotateTableEntityData($data, $ner_data, $canonical_table_id)
     {
         $formed_data_entries = array();
         $formed_ner_labels = array();
@@ -1056,14 +1027,16 @@ class CanonicalTableAnnotator
                 // Если столбец с данными
                 if ($heading == self::DATA_TITLE) {
                     // Формирование массива корректных значений ячеек столбца с данными
-                    $formed_data_entries[$value] = self::getNormalizedEntry($value);
+                    $formed_data_entries[strval($value)] = self::getNormalizedEntry($value);
+                    // Запоминание текущего значения ячейки столбца с данными
+                    $current_data_value = strval($value);
                     // Цикл по всем ячейкам столбца с NER-метками
-                    foreach ($ner_labels as $ner_row_number => $ner_row)
+                    foreach ($ner_data as $ner_row_number => $ner_row)
                         foreach ($ner_row as $ner_key => $ner_value)
                             if ($ner_key == self::DATA_TITLE) {
                                 // Формирование массива соответсвий NER-меток значениям столбца с данными
                                 if ($row_number == $ner_row_number)
-                                    $formed_ner_labels[$value] = $ner_value;
+                                    $formed_ner_labels[strval($value)] = $ner_value;
                             }
                 }
                 // Если столбцы с заголовками
@@ -1077,81 +1050,147 @@ class CanonicalTableAnnotator
             // Формирование массива корректных значений ячеек заголовков таблицы
             $formed_heading_labels[$current_data_value] = $heading_labels;
         }
-        // Массив для хранения массивов сущностей кандидатов
-        $all_candidate_entities = array();
-        // Массив для ранжированных сущностей кандидатов по расстоянию Левенштейна
-        $levenshtein_distance_candidate_entities = array();
-        // Массив для ранжированных сущностей кандидатов, определенных по их связям с классами, полученных NER-метками
-        $ner_class_distance_candidate_entities = array();
-        // Массив для ранжированных сущностей кандидатов по заголовкам таблицы
-        $heading_distance_candidate_entities = array();
-        // Массив для ранжированных сущностей кандидатов по сходству контекста упоминания сущности
-        $context_similarity_distance_candidate_entities = array();
         // Обход массива корректных значений столбца данных для поиска референтных сущностей
         foreach ($formed_data_entries as $data_key => $entry) {
-
-            $this->log .= '**************************' . PHP_EOL;
-
-            // Формирование набора сущностей кандидатов
-            $candidate_entities = $this->getCandidateEntities($entry, self::DBPEDIA_RESOURCE_SECTION);
-
-            $this->log .= PHP_EOL;
-
-            // Если набор сущностей кандидатов сформирован
-            if ($candidate_entities) {
-                // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
-                $levenshtein_distance_candidate_entities[$data_key] = $this->getLevenshteinDistance($entry,
-                    $candidate_entities);
-                // Обход массива корректных значений NER-меток для столбца данных
-                foreach ($formed_ner_labels as $ner_key => $ner_label)
-                    if ($data_key == $ner_key)
-                        // Вычисление сходства между сущностями из набора кандидатов и классом, определенного NER-меткой
-                        $ner_class_distance_candidate_entities[$data_key] = $this->getNerClassDistance($ner_label,
-                            $candidate_entities);
-
-                $this->log .= PHP_EOL;
-
-                // Обход массива всех заголовков таблицы
-                foreach ($formed_heading_labels as $heading_key => $formed_row_heading_labels)
-                    if ($data_key == $heading_key) {
-                        // Вычисление сходства между сущностями из набора кандидатов по заголовкам
-                        $heading_distance_candidate_entities[$data_key] = $this->getHeadingDistance(
-                            $formed_row_heading_labels, $candidate_entities);
+            // Параллельное формирование сущностей кандидатов
+            $cr = new ConsoleRunner(['file' => '@app/yii']);
+            $cr->run('spreadsheet/get-candidate-entities "' . $entry . '" "' .
+                $data_key . '" ' . self::DATA_TITLE . ' ' . $canonical_table_id);
+        }
+        // Ожидание формирования сущностей кандидатов в БД
+        $cell_value_count = 0;
+        while ($cell_value_count != count($formed_heading_labels)) {
+            $cell_value_count = CellValue::find()
+                ->where(['type' => CellValue::DATA, 'annotated_canonical_table' => $canonical_table_id])
+                ->count();
+            sleep(1);
+        }
+        // Поиск всех значений ячеек для текущей канонической таблицы в БД
+        $cell_values = CellValue::find()
+            ->where(['type' => CellValue::DATA, 'annotated_canonical_table' => $canonical_table_id])
+            ->all();
+        // Обход всех значений ячеек текущей канонической таблицы
+        foreach ($cell_values as $cell_value) {
+            // Поиск всех сущностей кандидатов для текущего значения чейки в БД
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            // Вычисление расстояния Левенштейна для каждой сущности из набора кандидатов
+            $this->getLevenshteinDistance(self::getNormalizedEntry($cell_value->name), $candidate_entities);
+        }
+        // Обход всех значений ячеек текущей канонической таблицы
+        foreach ($cell_values as $cell_value) {
+            // Поиск всех сущностей кандидатов для текущего значения чейки в БД
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            // Обход массива корректных значений NER-меток для столбца данных
+            foreach ($formed_ner_labels as $ner_key => $ner_label)
+                // Если значение ячейки равно ключу из массива с NER-метками
+                if ($cell_value->name == $ner_key)
+                    // Обход всех сущностей кандидатов из выборки
+                    foreach ($candidate_entities as $candidate_entity) {
+                        // Параллельное вычисление сходства между сущностью из набора кандидатов и классом,
+                        // определенного NER-меткой
+                        $cr = new ConsoleRunner(['file' => '@app/yii']);
+                        $cr->run('spreadsheet/get-ner-class-rank "' . $ner_label . '" "' .
+                            $candidate_entity->entity . '" ' . $candidate_entity->id);
                     }
-
-                $this->log .= PHP_EOL;
-
-                // Вычисление сходства между сущностями из набора кандидатов по контексту упоминания сущности
-                $context_similarity_distance_candidate_entities[$data_key] = $this->getContextSimilarityDistance($data,
-                    $data_key, $candidate_entities);
-
-                // Массив сущностей кандидатов с их родительскими классами
-                $candidate_entities_with_classes = array();
-                // Обход сущностей кандидатов
-                foreach ($candidate_entities as $candidate_entity) {
-                    // Получение родительских классов для текущей сущности кандидата
-                    $parent_classes = $this->getParentClasses($candidate_entity);
-                    // Формирование массива сущностей кандидатов с их родительскими классами
-                    $candidate_entities_with_classes[$candidate_entity] = $parent_classes;
-                }
-                // Добавление массива сущностей кандидатов с их классами в общий набор
-                $all_candidate_entities[$data_key] = $candidate_entities_with_classes;
+        }
+        // Ожидание формирования оценок сходства между сущностью из набора кандидатов и классом, определенного NER-меткой
+        foreach ($cell_values as $cell_value) {
+            $ner_class_count = 0;
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            $candidate_entity_count = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->count();
+            while ($ner_class_count != $candidate_entity_count) {
+                $ner_class_count = 0;
+                foreach ($candidate_entities as $candidate_entity)
+                    $ner_class_count += NerClassRank::find()
+                        ->where(['candidate_entity' => $candidate_entity->id])
+                        ->count();
+                sleep(1);
             }
         }
+        // Обход всех значений ячеек текущей канонической таблицы
+        foreach ($cell_values as $cell_value) {
+            // Поиск всех сущностей кандидатов для текущего значения чейки в БД
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            // Обход массива всех заголовков таблицы
+            foreach ($formed_heading_labels as $heading_key => $formed_row_heading_labels)
+                if ($cell_value->name == $heading_key)
+                    // Обход всех сущностей кандидатов из выборки
+                    foreach ($candidate_entities as $candidate_entity) {
+                        // Параллельное вычисление сходства между сущностями из набора кандидатов по заголовкам
+                        $cr = new ConsoleRunner(['file' => '@app/yii']);
+                        $cr->run('spreadsheet/get-heading-rank "' .
+                            implode(",", $formed_row_heading_labels) . '" "' .
+                            $candidate_entity->entity . '" ' . $candidate_entity->id);
+                    }
+        }
+        // Ожидание формирования оценок сходства между сущностями из набора кандидатов по заголовкам
+        foreach ($cell_values as $cell_value) {
+            $heading_count = 0;
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            $candidate_entity_count = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->count();
+            while ($heading_count != $candidate_entity_count) {
+                $heading_count = 0;
+                foreach ($candidate_entities as $candidate_entity)
+                    $heading_count += HeadingRank::find()
+                        ->where(['candidate_entity' => $candidate_entity->id])
+                        ->count();
+                sleep(1);
+            }
+        }
+        // Вычисление сходства между сущностями из набора кандидатов по контексту упоминания сущности
+        $this->getContextSimilarity($data, $cell_values);
+        // Обход всех значений ячеек текущей канонической таблицы
+        foreach ($cell_values as $cell_value) {
+            // Поиск всех сущностей кандидатов для текущего значения чейки в БД
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            // Обход всех сущностей кандидатов из выборки
+            foreach ($candidate_entities as $candidate_entity) {
+                // Параллельное получение родительских классов для текущей сущности кандидата
+                $cr = new ConsoleRunner(['file' => '@app/yii']);
+                $cr->run('spreadsheet/get-parent-classes "' . $candidate_entity->entity . '" ' .
+                    $candidate_entity->id);
+            }
+        }
+        // Ожидание формирования записей для сходства между сущностями из набора кандидатов по семантической близости
+        foreach ($cell_values as $cell_value) {
+            $semantic_similarity_count = 0;
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            $candidate_entity_count = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->count();
+            while ($semantic_similarity_count != $candidate_entity_count) {
+                $semantic_similarity_count = 0;
+                foreach ($candidate_entities as $candidate_entity)
+                    $semantic_similarity_count += SemanticSimilarity::find()
+                        ->where(['candidate_entity' => $candidate_entity->id])
+                        ->count();
+                sleep(1);
+            }
+        }
+        // Массив для всех наборов сущностей кандидатов с их родительскими классами
+        $all_candidate_entities = array();
+        // Обход всех значений ячеек текущей канонической таблицы
+        foreach ($cell_values as $cell_value) {
+            // Массив сущностей кандидатов с их родительскими классами
+            $candidate_entities_with_classes = array();
+            // Поиск всех сущностей кандидатов для текущего значения чейки в БД
+            $candidate_entities = CandidateEntity::find()->where(['cell_value' => $cell_value->id])->all();
+            // Обход всех сущностей кандидатов из выборки
+            foreach ($candidate_entities as $candidate_entity) {
+                $foo = array();
+                // Поиск всех родительских классов для сущности кандидата в БД
+                $parent_classes = ParentClass::find()->where(['candidate_entity' => $candidate_entity->id])->all();
+                foreach ($parent_classes as $parent_class)
+                    array_push($foo, $parent_class->class);
+                // Формирование массива сущностей кандидатов с их родительскими классами
+                $candidate_entities_with_classes[$candidate_entity->entity] = $foo;
+            }
+            // Добавление массива сущностей кандидатов с их классами в общий набор
+            $all_candidate_entities[$cell_value->name] = $candidate_entities_with_classes;
+        }
         // Вычисление сходства между сущностями из набора кандидатов по семантической близости
-        $semantic_similarity_distance_candidate_entities = $this->getSemanticSimilarityDistance($all_candidate_entities);
-
-        // Получение агрегированных оценок (рангов) для сущностей кандидатов
-        $ranked_candidate_entities = $this->getAggregatedNamedEntityRanks($levenshtein_distance_candidate_entities, 1,
-            $ner_class_distance_candidate_entities, 1, $heading_distance_candidate_entities, 1,
-            $semantic_similarity_distance_candidate_entities, 1, $context_similarity_distance_candidate_entities, 1);
-
-        $this->log .= '**************************' . PHP_EOL;
-        $this->log .= 'Общее время на запросы: ' . $this->all_query_time . ' (сек.)' . PHP_EOL;
-        $this->log .= 'Общее время на запросы: ' . $this->all_query_time / 60 . ' (мин.)' . PHP_EOL;
-        $this->log .= '**************************';
-
-        return $ranked_candidate_entities;
+        $this->getSemanticSimilarityDistance($all_candidate_entities, $canonical_table_id);
+        // Агрегирование оценок (рангов) для сущностей кандидатов и сохранение их в БД
+        $this->getAggregatedNamedEntityRanks($canonical_table_id, 1, 1, 1,
+            1, 1);
     }
 
     /**

@@ -17,7 +17,12 @@ use yii\behaviors\TimestampBehavior;
  * @property int $cell_value
  *
  * @property CellValue $cellValue
- * @property RelationshipDistance[] $relationshipDistances
+ * @property RelationshipRank[] $relationshipRanks
+ * @property NerClassRank[] $nerClassRanks
+ * @property EntityContext[] $entityContexts
+ * @property ContextSimilarity[] $contextSimilarityRanks
+ * @property ParentClass[] $parentClasses
+ * @property SemanticSimilarity[] $semanticSimilarityRanks
  */
 class CandidateEntity extends \yii\db\ActiveRecord
 {
@@ -79,8 +84,48 @@ class CandidateEntity extends \yii\db\ActiveRecord
     /**
      * @return \yii\db\ActiveQuery
      */
-    public function getRelationshipDistances()
+    public function getRelationshipRanks()
     {
-        return $this->hasMany(RelationshipDistance::className(), ['candidate_entity' => 'id']);
+        return $this->hasMany(RelationshipRank::className(), ['candidate_entity' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getNerClassRanks()
+    {
+        return $this->hasMany(NerClassRank::className(), ['candidate_entity' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getEntityContexts()
+    {
+        return $this->hasMany(EntityContext::className(), ['candidate_entity' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getContextSimilarityRanks()
+    {
+        return $this->hasMany(ContextSimilarity::className(), ['candidate_entity' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getParentClasses()
+    {
+        return $this->hasMany(ParentClass::className(), ['candidate_entity' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getSemanticSimilarityRanks()
+    {
+        return $this->hasMany(SemanticSimilarity::className(), ['candidate_entity' => 'id']);
     }
 }

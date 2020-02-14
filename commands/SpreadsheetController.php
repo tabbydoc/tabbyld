@@ -8,9 +8,15 @@ use BorderCloud\SPARQL\SparqlClient;
 use app\modules\main\models\ExcelFileForm;
 use app\components\CanonicalTableAnnotator;
 use app\modules\main\models\CellValue;
+use app\modules\main\models\HeadingRank;
+use app\modules\main\models\ParentClass;
+use app\modules\main\models\NerClassRank;
 use app\modules\main\models\AnnotatedRow;
+use app\modules\main\models\EntityContext;
 use app\modules\main\models\CandidateEntity;
 use app\modules\main\models\AnnotatedDataset;
+use app\modules\main\models\ContextSimilarity;
+use app\modules\main\models\SemanticSimilarity;
 use app\modules\main\models\AnnotatedCanonicalTable;
 
 /**
@@ -26,7 +32,11 @@ class SpreadsheetController extends Controller
         echo 'yii spreadsheet/annotate' . PHP_EOL;
         echo 'yii spreadsheet/annotate-literal-cell' . PHP_EOL;
         echo 'yii spreadsheet/get-candidate-entities' . PHP_EOL;
-        echo 'yii spreadsheet/find-relationship-distance' . PHP_EOL;
+        echo 'yii spreadsheet/find-relationship-rank' . PHP_EOL;
+        echo 'yii spreadsheet/get-ner-class-rank' . PHP_EOL;
+        echo 'yii spreadsheet/get-heading-rank' . PHP_EOL;
+        echo 'yii spreadsheet/get-entity-context' . PHP_EOL;
+        echo 'yii spreadsheet/get-parent-classes' . PHP_EOL;
     }
 
     /**
@@ -105,6 +115,8 @@ class SpreadsheetController extends Controller
         // Сохранение значения ячейки канонической таблицы в БД
         $cell_value_model = new CellValue();
         $cell_value_model->name = $entry;
+        if ($heading_title == CanonicalTableAnnotator::DATA_TITLE)
+            $cell_value_model->type = CellValue::DATA;
         if ($heading_title == CanonicalTableAnnotator::ROW_HEADING_TITLE)
             $cell_value_model->type = CellValue::ROW_HEADING;
         if ($heading_title == CanonicalTableAnnotator::COLUMN_HEADING_TITLE)
@@ -129,7 +141,7 @@ class SpreadsheetController extends Controller
      * @param $current_candidate_entity - текущее значение сущности кандидата, для которого ищуться связи
      * @param $path - путь для сохранения файлов
      */
-    public function actionFindRelationshipDistance($current_label, $current_candidate_entity, $path)
+    public function actionFindRelationshipRank($current_label, $current_candidate_entity, $path)
     {
         // Кодирование в имени файла запрещенных символов
         $correct_current_label = CanonicalTableAnnotator::encodeFileName($current_label);
@@ -217,6 +229,189 @@ class SpreadsheetController extends Controller
     }
 
     /**
+     * Определение близости сущности кандидата к классу, который задан NER-меткой.
+     *
+     * @param $ner_label - NER-метка присвоенная значению ячейки в столбце DATA
+     * @param $candidate_entity_name - имя сущности кандидата
+     * @param $candidate_entity_id - идентификатор сущности кандидата
+     */
+    public function actionGetNerClassRank($ner_label, $candidate_entity_name, $candidate_entity_id)
+    {
+        // Определение класса из онтологии DBpedia для соответствующей метки NER
+        $ner_class = '';
+        if ($ner_label == CanonicalTableAnnotator::LOCATION_NER_LABEL)
+            $ner_class = CanonicalTableAnnotator::LOCATION_ONTOLOGY_CLASS;
+        if ($ner_label == CanonicalTableAnnotator::PERSON_NER_LABEL)
+            $ner_class = CanonicalTableAnnotator::PERSON_ONTOLOGY_CLASS;
+        if ($ner_label == CanonicalTableAnnotator::ORGANIZATION_NER_LABEL)
+            $ner_class = CanonicalTableAnnotator::ORGANISATION_ONTOLOGY_CLASS;
+        // Подключение к DBpedia
+        $sparql_client = new SparqlClient();
+        $sparql_client->setEndpointRead(CanonicalTableAnnotator::ENDPOINT_NAME);
+        // SPARQL-запрос к DBpedia для определения глубины связи текущей сущности из набора кандидатов с классом
+        $query = "SELECT count(?intermediate)/2 as ?depth
+            FROM <http://dbpedia.org>
+            WHERE { <$candidate_entity_name> rdf:type/rdfs:subClassOf* ?intermediate .
+                ?intermediate rdfs:subClassOf* <$ner_class>
+            }";
+        $rows = $sparql_client->query($query, 'rows');
+        $error = $sparql_client->getErrors();
+        // Вычисляемый ранг (оценка) для сущности кандидата
+        $rank = 0;
+        // Если нет ошибок при запросе, есть результат запроса и глубина не 0, то
+        // вычисление ранга (оценки) для текущей сущности из набора кандидатов в соответствии с глубиной
+        if (!$error && $rows['result']['rows'] && $rows['result']['rows'][0]['depth'] != 0)
+            $rank = 1 / $rows['result']['rows'][0]['depth'];
+        // Сохранение ранга (оценки) близости сущности кандидата к классу, который задан NER-меткой, в БД
+        $ner_class_rank_model = new NerClassRank();
+        $ner_class_rank_model->rank = (int)$rank;
+        $ner_class_rank_model->execution_time = $rows['query_time'];
+        $ner_class_rank_model->candidate_entity = $candidate_entity_id;
+        $ner_class_rank_model->save();
+    }
+
+    /**
+     * Определение сходства сущности кандидата по заголовкам таблицы.
+     *
+     * @param $formed_row_heading_labels - массив заголовков строки в канонической таблице
+     * @param $candidate_entity_name - имя сущности кандидата
+     * @param $candidate_entity_id - идентификатор сущности кандидата
+     */
+    public function actionGetHeadingRank($formed_row_heading_labels, $candidate_entity_name, $candidate_entity_id)
+    {
+        // Подключение к DBpedia
+        $sparql_client = new SparqlClient();
+        $sparql_client->setEndpointRead(CanonicalTableAnnotator::ENDPOINT_NAME);
+        $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+            SELECT ?class
+            FROM <http://dbpedia.org>
+            WHERE { <$candidate_entity_name> rdf:type ?class . FILTER(strstarts(str(?class), str(dbo:))) }";
+        $rows = $sparql_client->query($query, 'rows');
+        $error = $sparql_client->getErrors();
+        // Вычисляемый ранг (оценка) для сущности кандидата
+        $rank = 100;
+        // Если нет ошибок при запросе и есть результат запроса
+        if (!$error && $rows['result']['rows']) {
+            // Обход всех найденных классов для сущности кандидата
+            foreach ($rows['result']['rows'] as $item) {
+                $distance = 100;
+                // Удаление адреса URI у класса
+                $class_name = str_replace(CanonicalTableAnnotator::DBPEDIA_ONTOLOGY_SECTION, '',
+                    $item['class']);
+                // Обход всех заголовков в строке таблицы
+                foreach (explode(',', $formed_row_heading_labels) as $heading_label) {
+                    // Вычисление расстояния Левенштейна между классом и текущим названием заголовка
+                    $current_distance = levenshtein($class_name, $heading_label);
+                    // Определение наименьшего расстояния Левенштейна
+                    if ($current_distance < $distance)
+                        $distance = $current_distance;
+                }
+                // Определение наименьшего расстояния Левенштейна для текущего класса
+                if ($distance < $rank)
+                    $rank = $distance;
+            }
+        }
+        // Сохранение ранга (оценки) сходства сущности кандидата по заголовкам таблицы в БД
+        $heading_rank_model = new HeadingRank();
+        $heading_rank_model->rank = (int)$rank;
+        $heading_rank_model->execution_time = $rows['query_time'];
+        $heading_rank_model->candidate_entity = $candidate_entity_id;
+        $heading_rank_model->save();
+    }
+
+    /**
+     * Получение контекста для сущности кандидата.
+     *
+     * @param $candidate_entity_name - имя сущности кандидата
+     * @param $candidate_entity_id - идентификатор сущности кандидата
+     */
+    public function actionGetEntityContext($candidate_entity_name, $candidate_entity_id)
+    {
+        // Подключение к DBpedia
+        $sparql_client = new SparqlClient();
+        $sparql_client->setEndpointRead(CanonicalTableAnnotator::ENDPOINT_NAME);
+        // SPARQL-запрос к DBpedia для поиска всех триплетов связанных с сущностью кандидатом
+        $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+            PREFIX dbr: <http://dbpedia.org/resource/>
+            SELECT ?subject ?object
+            FROM <http://dbpedia.org>
+            WHERE {
+                { <$candidate_entity_name> ?property ?object .
+                    FILTER(strstarts(str(?object), str(dbo:)) || strstarts(str(?object), str(dbr:))) .
+                    FILTER(strstarts(str(?property), str(dbo:)) || strstarts(str(?property), str(dbr:)))
+                } UNION { ?subject ?property <$candidate_entity_name> .
+                    FILTER(strstarts(str(?subject), str(dbo:)) || strstarts(str(?subject), str(dbr:))) .
+                    FILTER(strstarts(str(?property), str(dbo:)) || strstarts(str(?property), str(dbr:)))
+                }
+            }";
+        $rows = $sparql_client->query($query, 'rows');
+        $error = $sparql_client->getErrors();
+        // Если нет ошибок при запросе и есть результат запроса
+        if (!$error && $rows['result']['rows'])
+            // Формирование файлов для хранения контекста сущности
+            foreach ($rows['result']['rows'] as $row) {
+                if (array_key_exists('subject', $row)) {
+                    // Сохранение контекста сущности кандидата
+                    $entity_context_model = new EntityContext();
+                    $entity_context_model->context = $row['subject'];
+                    $entity_context_model->candidate_entity = $candidate_entity_id;
+                    $entity_context_model->save();
+                }
+                if (array_key_exists('object', $row)) {
+                    // Сохранение контекста сущности кандидата
+                    $entity_context_model = new EntityContext();
+                    $entity_context_model->context = $row['object'];
+                    $entity_context_model->candidate_entity = $candidate_entity_id;
+                    $entity_context_model->save();
+                }
+            }
+        // Создание модели для хранения сходства сущностей кандидатов по контексту упоминания сущности
+        $context_similarity_model = new ContextSimilarity();
+        $context_similarity_model->rank = 0;
+        $context_similarity_model->execution_time = $rows['query_time'];
+        $context_similarity_model->candidate_entity = $candidate_entity_id;
+        $context_similarity_model->save();
+    }
+
+    /**
+     * Поиск и формирование массива родительских классов для сущности кандидата.
+     *
+     * @param $candidate_entity_name - имя сущности кандидата
+     * @param $candidate_entity_id - идентификатор сущности кандидата
+     */
+    public function actionGetParentClasses($candidate_entity_name, $candidate_entity_id)
+    {
+        // Подключение к DBpedia
+        $sparql_client = new SparqlClient();
+        $sparql_client->setEndpointRead(CanonicalTableAnnotator::ENDPOINT_NAME);
+        // SPARQL-запрос к DBpedia ontology для поиска родительских классов для сущности
+        $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
+            SELECT ?class
+            FROM <http://dbpedia.org>
+            WHERE {
+                <$candidate_entity_name> ?property ?class . FILTER (strstarts(str(?class), str(dbo:)))
+            } LIMIT 100";
+        $rows = $sparql_client->query($query, 'rows');
+        $error = $sparql_client->getErrors();
+        // Если нет ошибок при запросе и есть результат запроса
+        if (!$error && $rows['result']['rows']) {
+            foreach ($rows['result']['rows'] as $row) {
+                // Сохранение родительского класса для сущности кандидата в БД
+                $parent_class_model = new ParentClass();
+                $parent_class_model->class = $row['class'];
+                $parent_class_model->candidate_entity = $candidate_entity_id;
+                $parent_class_model->save();
+            }
+        }
+        // Создание модели для хранения сходства между сущностями из набора кандидатов по семантической близости
+        $semantic_similarity_model = new SemanticSimilarity();
+        $semantic_similarity_model->rank = 0;
+        $semantic_similarity_model->execution_time = $rows['query_time'];
+        $semantic_similarity_model->candidate_entity = $candidate_entity_id;
+        $semantic_similarity_model->save();
+    }
+
+    /**
      * Команда запуска аннотатора канонических таблиц.
      */
     public function actionAnnotate()
@@ -272,21 +467,21 @@ class SpreadsheetController extends Controller
                     if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::LITERAL_STRATEGY) {
                         // Аннотирование столбца "DATA"
                         $annotator->annotateTableLiteralData($data, $ner_data, $annotated_canonical_table_model->id);
-                        // Аннотирование столбца "RowHeading"
-                        $annotator->annotateTableHeading($data, CanonicalTableAnnotator::ROW_HEADING_TITLE,
-                            $annotated_canonical_table_model->id);
-                        // Аннотирование столбца "ColumnHeading"
-                        $annotator->annotateTableHeading($data,
-                           CanonicalTableAnnotator::COLUMN_HEADING_TITLE,
-                            $annotated_canonical_table_model->id);
                         // Генерация RDF-документа в формате RDF/XML
                         //$anotator->generateRDFXMLCode();
                     }
                     // Если установлена стратегия аннотирования именованных сущностей
                     if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
                         // Аннотирование столбца "DATA"
-                        $ranked_data_candidate_entities = $annotator->annotateTableEntityData($data, $ner_data);
+                        $annotator->annotateTableEntityData($data, $ner_data, $annotated_canonical_table_model->id);
                     }
+                    // Аннотирование столбца "RowHeading"
+                    $annotator->annotateTableHeading($data, CanonicalTableAnnotator::ROW_HEADING_TITLE,
+                        $annotated_canonical_table_model->id);
+                    // Аннотирование столбца "ColumnHeading"
+                    $annotator->annotateTableHeading($data,
+                        CanonicalTableAnnotator::COLUMN_HEADING_TITLE,
+                        $annotated_canonical_table_model->id);
 
                     // Обход массива данных исходной канонической таблицы
                     foreach ($data as $item) {
@@ -314,8 +509,10 @@ class SpreadsheetController extends Controller
                                             ->where(['cell_value' => $cell_value->id])
                                             ->orderBy('aggregated_rank DESC')
                                             ->one();
-                                        // Присвоение значению ячейки референтной сущности кандидата
-                                        $annotated_row_model->data = $candidate_entity->entity;
+                                        // Если выборка сущности кандидата не пустая
+                                        if (!empty($candidate_entity))
+                                            // Присвоение значению ячейки референтной сущности кандидата
+                                            $annotated_row_model->data = $candidate_entity->entity;
                                     }
                             }
                             if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE) {
