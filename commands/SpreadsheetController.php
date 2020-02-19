@@ -422,8 +422,9 @@ class SpreadsheetController extends Controller
         $annotated_dataset_model = new AnnotatedDataset();
         $annotated_dataset_model->name = 'test_dataset';
         $annotated_dataset_model->status = AnnotatedDataset::PUBLIC_STATUS;
-        $annotated_dataset_model->recall = 0;
         $annotated_dataset_model->precision = 0;
+        $annotated_dataset_model->recall = 0;
+        $annotated_dataset_model->f_score = 0;
         $annotated_dataset_model->runtime = 0;
         $annotated_dataset_model->save();
         // Открытие каталога с набором данных электронных таблиц
@@ -446,6 +447,12 @@ class SpreadsheetController extends Controller
                         'setIndexSheetByName' => true,
                         'getOnlySheet' => ExcelFileForm::NER_TAGS,
                     ]);
+                    // Получение данных о метках DBpedia из файла XSLX
+                    $dbpedia_data = Excel::import('web/dataset/' . $file_name, [
+                        'setFirstRecordAsKeys' => true,
+                        'setIndexSheetByName' => true,
+                        'getOnlySheet' => ExcelFileForm::DBPEDIA_TAGS,
+                    ]);
                     // Получение имени файла без расширения
                     $file_name_without_extension = pathinfo($file_name, PATHINFO_FILENAME );
                     // Сохранение информации об аннотированной канонической таблице в БД
@@ -453,8 +460,10 @@ class SpreadsheetController extends Controller
                     $annotated_canonical_table_model->name = $file_name_without_extension;
                     $annotated_canonical_table_model->total_element_number = 0;
                     $annotated_canonical_table_model->annotated_element_number = 0;
-                    $annotated_canonical_table_model->recall = 0;
+                    $annotated_canonical_table_model->correctly_annotated_element_number = 0;
                     $annotated_canonical_table_model->precision = 0;
+                    $annotated_canonical_table_model->recall = 0;
+                    $annotated_canonical_table_model->f_score = 0;
                     $annotated_canonical_table_model->runtime = 0;
                     $annotated_canonical_table_model->annotated_dataset = $annotated_dataset_model->id;
                     $annotated_canonical_table_model->save();
@@ -502,17 +511,18 @@ class SpreadsheetController extends Controller
                                 // Обход всех значений ячеек столбца "DATA"
                                 foreach ($cell_values as $cell_value)
                                     if ($value == $cell_value->name) {
-                                        // Подсчет кол-ва аннотированных ячеек канонической таблицы
-                                        $annotated_canonical_table_model->annotated_element_number++;
                                         // Получение первой записи с сущностью кандидатом с самым высоким агрегированным рангом
                                         $candidate_entity = CandidateEntity::find()
                                             ->where(['cell_value' => $cell_value->id])
                                             ->orderBy('aggregated_rank DESC')
                                             ->one();
                                         // Если выборка сущности кандидата не пустая
-                                        if (!empty($candidate_entity))
+                                        if (!empty($candidate_entity)) {
+                                            // Подсчет кол-ва аннотированных ячеек канонической таблицы
+                                            $annotated_canonical_table_model->annotated_element_number++;
                                             // Присвоение значению ячейки референтной сущности кандидата
                                             $annotated_row_model->data = $candidate_entity->entity;
+                                        }
                                     }
                             }
                             if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE) {
@@ -572,10 +582,10 @@ class SpreadsheetController extends Controller
                                             ->one();
                                         // Если выборка сущности кандидата не пустая
                                         if (!empty($candidate_entity)) {
-                                            // Запоминание референтной сущности кандидата
-                                            $existing_entity = $candidate_entity->entity;
                                             // Подсчет кол-ва аннотированных ячеек канонической таблицы
                                             $annotated_canonical_table_model->annotated_element_number++;
+                                            // Запоминание референтной сущности кандидата
+                                            $existing_entity = $candidate_entity->entity;
                                         }
                                     }
                                     // Присвоение значению ячейки референтной сущности кандидата
@@ -611,16 +621,57 @@ class SpreadsheetController extends Controller
                             'column_heading' => 'ColumnHeading'
                         ],
                     ]);
-                    // Вычисление оценки полноты и запись ее в БД
+                    // Подсчет корректно аннотированных значений ячеек
+                    foreach ($dbpedia_data as $table_row_key => $table_row)
+                        foreach ($table_row as $heading => $value) {
+                            if ($heading == CanonicalTableAnnotator::DATA_TITLE)
+                                foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
+                                    if ($table_row_key == $annotated_row_key && $value == $annotated_row->data)
+                                        $annotated_canonical_table_model->correctly_annotated_element_number++;
+                            if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE) {
+                                $string_array = explode(" | ", $value);
+                                foreach ($string_array as $string)
+                                    foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
+                                        if ($table_row_key == $annotated_row_key) {
+                                            $annotated_row_heading = explode(" | ",
+                                                $annotated_row->row_heading);
+                                            foreach ($annotated_row_heading as $annotated_value)
+                                                if ($string == $annotated_value)
+                                                    $annotated_canonical_table_model->correctly_annotated_element_number++;
+                                        }
+                            }
+                            if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE) {
+                                $string_array = explode(" | ", $value);
+                                foreach ($string_array as $string)
+                                    foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
+                                        if ($table_row_key == $annotated_row_key) {
+                                            $annotated_column_heading = explode(" | ",
+                                                $annotated_row->column_heading);
+                                            foreach ($annotated_column_heading as $annotated_value)
+                                                if ($string == $annotated_value)
+                                                    $annotated_canonical_table_model->correctly_annotated_element_number++;
+                                        }
+                            }
+                        }
+                    // Вычисление точности
+                    $annotated_canonical_table_model->precision =
+                        $annotated_canonical_table_model->correctly_annotated_element_number /
+                        $annotated_canonical_table_model->annotated_element_number;
+                    // Вычисление полноты
                     $annotated_canonical_table_model->recall =
-                        $annotated_canonical_table_model->annotated_element_number /
+                        $annotated_canonical_table_model->correctly_annotated_element_number /
                         $annotated_canonical_table_model->total_element_number;
+                    // Вычисление F-меры
+                    $annotated_canonical_table_model->f_score = (2 * $annotated_canonical_table_model->precision *
+                            $annotated_canonical_table_model->recall) / ($annotated_canonical_table_model->precision +
+                            $annotated_canonical_table_model->recall);
                     // Запись времени обработки таблицы
                     $annotated_canonical_table_model->runtime = round(microtime(true) -
                         $table_runtime, 4);
                     // Обновление полей в БД
                     $annotated_canonical_table_model->updateAttributes(['total_element_number',
-                        'annotated_element_number', 'recall', 'runtime']);
+                        'annotated_element_number', 'correctly_annotated_element_number',
+                        'precision', 'recall', 'f_score', 'runtime']);
                 }
             }
             // Закрытие каталога набора данных

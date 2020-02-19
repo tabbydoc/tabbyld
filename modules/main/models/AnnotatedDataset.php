@@ -14,8 +14,9 @@ use yii\behaviors\TimestampBehavior;
  * @property string $name
  * @property string $author
  * @property int $status
- * @property double $recall
  * @property double $precision
+ * @property double $recall
+ * @property double $f_score
  * @property double $runtime
  * @property string $description
  *
@@ -40,10 +41,10 @@ class AnnotatedDataset extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'recall', 'precision', 'runtime'], 'required'],
+            [['name', 'precision', 'recall', 'f_score', 'runtime'], 'required'],
             ['status', 'integer'],
-            [['recall', 'precision', 'runtime'], 'double'],
-            [['name', 'author'], 'string', 'max' => 255],
+            [['precision', 'recall', 'f_score', 'runtime'], 'double'],
+            [['name', 'author'], 'string', 'max' => 300],
             [['description'], 'string', 'max' => 1000],
         ];
     }
@@ -60,8 +61,9 @@ class AnnotatedDataset extends \yii\db\ActiveRecord
             'name' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_NAME'),
             'author' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_AUTHOR'),
             'status' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_STATUS'),
-            'recall' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_RECALL'),
             'precision' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_PRECISION'),
+            'recall' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_RECALL'),
+            'f_score' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_F_SCORE'),
             'runtime' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_RUNTIME'),
             'description' => Yii::t('app', 'ANNOTATED_DATASET_MODEL_DESCRIPTION'),
         ];

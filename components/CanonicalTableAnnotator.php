@@ -143,8 +143,8 @@ class CanonicalTableAnnotator
             $normalized_entry);
         // Удаление пробелов из начала и конца строки
         $normalized_entry = trim($normalized_entry);
-        // Перевод первой буквы в каждом слове в заглавую
-        $normalized_entry = ucwords(mb_strtolower($normalized_entry));
+        // Перевод первой буквы строки в заглавную, все остальные приводятся в нижний регистр
+        $normalized_entry = ucfirst(mb_strtolower($normalized_entry));
         // Замена пробелов знаком нижнего подчеркивания
         $normalized_entry = str_replace(' ', '_', $normalized_entry);
 

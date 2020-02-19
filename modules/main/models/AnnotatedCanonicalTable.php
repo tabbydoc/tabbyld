@@ -14,8 +14,10 @@ use yii\behaviors\TimestampBehavior;
  * @property string $name
  * @property int $total_element_number
  * @property int $annotated_element_number
- * @property double $recall
+ * @property int $correctly_annotated_element_number
  * @property double $precision
+ * @property double $recall
+ * @property double $f_score
  * @property double $runtime
  * @property string $description
  * @property int $annotated_dataset
@@ -39,11 +41,12 @@ class AnnotatedCanonicalTable extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'total_element_number', 'annotated_element_number', 'recall', 'precision',
-                'runtime', 'annotated_dataset'], 'required'],
-            [['total_element_number', 'annotated_element_number', 'annotated_dataset'], 'integer'],
-            [['recall', 'precision' , 'runtime'], 'double'],
-            [['name'], 'string', 'max' => 255],
+            [['name', 'total_element_number', 'annotated_element_number', 'correctly_annotated_element_number',
+                'precision', 'recall', 'f_score', 'runtime', 'annotated_dataset'], 'required'],
+            [['total_element_number', 'annotated_element_number', 'correctly_annotated_element_number',
+                'annotated_dataset'], 'integer'],
+            [['precision', 'recall', 'f_score', 'runtime'], 'double'],
+            [['name'], 'string', 'max' => 300],
             [['description'], 'string', 'max' => 1000],
             [['annotated_dataset'], 'exist', 'skipOnError' => true, 'targetClass' => AnnotatedDataset::className(),
                 'targetAttribute' => ['annotated_dataset' => 'id']],
@@ -64,8 +67,11 @@ class AnnotatedCanonicalTable extends \yii\db\ActiveRecord
                 'ANNOTATED_CANONICAL_TABLE_MODEL_TOTAL_ELEMENT_NUMBER'),
             'annotated_element_number' => Yii::t('app',
                 'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_ELEMENT_NUMBER'),
-            'recall' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_RECALL'),
+            'correctly_annotated_element_number' => Yii::t('app',
+                'ANNOTATED_CANONICAL_TABLE_MODEL_CORRECTLY_ANNOTATED_ELEMENT_NUMBER'),
             'precision' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_PRECISION'),
+            'recall' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_RECALL'),
+            'f_score' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_F_SCORE'),
             'runtime' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_RUNTIME'),
             'description' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_DESCRIPTION'),
             'annotated_dataset' => Yii::t('app', 'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_DATASET'),
