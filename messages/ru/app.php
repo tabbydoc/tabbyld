@@ -121,6 +121,7 @@ return [
     'ANNOTATED_DATASET_MODEL_NAME' => 'Название',
     'ANNOTATED_DATASET_MODEL_AUTHOR' => 'Автор',
     'ANNOTATED_DATASET_MODEL_STATUS' => 'Статус',
+    'ANNOTATED_DATASET_MODEL_ACCURACY' => 'Правильность',
     'ANNOTATED_DATASET_MODEL_PRECISION' => 'Точность',
     'ANNOTATED_DATASET_MODEL_RECALL' => 'Полнота',
     'ANNOTATED_DATASET_MODEL_F_SCORE' => 'F-мера',
@@ -136,6 +137,7 @@ return [
     'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_ELEMENT_NUMBER' => 'Количество аннотированных элементов',
     'ANNOTATED_CANONICAL_TABLE_MODEL_CORRECTLY_ANNOTATED_ELEMENT_NUMBER' =>
         'Количество правильно аннотированных элементов',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ACCURACY' => 'Правильность',
     'ANNOTATED_CANONICAL_TABLE_MODEL_PRECISION' => 'Точность',
     'ANNOTATED_CANONICAL_TABLE_MODEL_RECALL' => 'Полнота',
     'ANNOTATED_CANONICAL_TABLE_MODEL_F_SCORE' => 'F-мера',

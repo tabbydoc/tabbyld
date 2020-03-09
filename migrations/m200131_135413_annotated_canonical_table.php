@@ -21,6 +21,7 @@ class m200131_135413_annotated_canonical_table extends Migration
             'total_element_number' => $this->integer()->notNull(),
             'annotated_element_number' => $this->integer()->notNull(),
             'correctly_annotated_element_number' => $this->integer()->notNull(),
+            'accuracy' => $this->double()->notNull(),
             'precision' => $this->double()->notNull(),
             'recall' => $this->double()->notNull(),
             'f_score' => $this->double()->notNull(),

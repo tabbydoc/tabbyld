@@ -422,6 +422,7 @@ class SpreadsheetController extends Controller
         $annotated_dataset_model = new AnnotatedDataset();
         $annotated_dataset_model->name = 'test_dataset';
         $annotated_dataset_model->status = AnnotatedDataset::PUBLIC_STATUS;
+        $annotated_dataset_model->accuracy = 0;
         $annotated_dataset_model->precision = 0;
         $annotated_dataset_model->recall = 0;
         $annotated_dataset_model->f_score = 0;
@@ -461,6 +462,7 @@ class SpreadsheetController extends Controller
                     $annotated_canonical_table_model->total_element_number = 0;
                     $annotated_canonical_table_model->annotated_element_number = 0;
                     $annotated_canonical_table_model->correctly_annotated_element_number = 0;
+                    $annotated_canonical_table_model->accuracy = 0;
                     $annotated_canonical_table_model->precision = 0;
                     $annotated_canonical_table_model->recall = 0;
                     $annotated_canonical_table_model->f_score = 0;
@@ -653,15 +655,19 @@ class SpreadsheetController extends Controller
                                         }
                             }
                         }
-                    // Вычисление точности
+                    // Вычисление правильности (accuracy)
+                    $annotated_canonical_table_model->accuracy =
+                        $annotated_canonical_table_model->annotated_element_number /
+                        $annotated_canonical_table_model->total_element_number;
+                    // Вычисление точности (precision)
                     $annotated_canonical_table_model->precision =
                         $annotated_canonical_table_model->correctly_annotated_element_number /
                         $annotated_canonical_table_model->annotated_element_number;
-                    // Вычисление полноты
+                    // Вычисление полноты (recall)
                     $annotated_canonical_table_model->recall =
                         $annotated_canonical_table_model->correctly_annotated_element_number /
                         $annotated_canonical_table_model->total_element_number;
-                    // Вычисление F-меры
+                    // Вычисление F-меры (F1 score)
                     $annotated_canonical_table_model->f_score = (2 * $annotated_canonical_table_model->precision *
                             $annotated_canonical_table_model->recall) / ($annotated_canonical_table_model->precision +
                             $annotated_canonical_table_model->recall);
@@ -671,7 +677,7 @@ class SpreadsheetController extends Controller
                     // Обновление полей в БД
                     $annotated_canonical_table_model->updateAttributes(['total_element_number',
                         'annotated_element_number', 'correctly_annotated_element_number',
-                        'precision', 'recall', 'f_score', 'runtime']);
+                        'accuracy', 'precision', 'recall', 'f_score', 'runtime']);
                 }
             }
             // Закрытие каталога набора данных
