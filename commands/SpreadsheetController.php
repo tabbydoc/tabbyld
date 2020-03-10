@@ -472,20 +472,8 @@ class SpreadsheetController extends Controller
 
                     // Создание объекта аннотатора таблиц
                     $annotator = new CanonicalTableAnnotator();
-                    // Идентификация типа таблицы по столбцу DATA
-                    $annotator->identifyTableType($data, $ner_data);
-                    // Если установлена стратегия аннотирования литеральных значений
-                    if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::LITERAL_STRATEGY) {
-                        // Аннотирование столбца "DATA"
-                        $annotator->annotateTableLiteralData($data, $ner_data, $annotated_canonical_table_model->id);
-                        // Генерация RDF-документа в формате RDF/XML
-                        //$anotator->generateRDFXMLCode();
-                    }
-                    // Если установлена стратегия аннотирования именованных сущностей
-                    if ($annotator->current_annotation_strategy_type == CanonicalTableAnnotator::NAMED_ENTITY_STRATEGY) {
-                        // Аннотирование столбца "DATA"
-                        $annotator->annotateTableEntityData($data, $ner_data, $annotated_canonical_table_model->id);
-                    }
+                    // Аннотирование столбца "DATA"
+                    $annotator->annotateTableData($data, $ner_data, $annotated_canonical_table_model->id);
                     // Аннотирование столбца "RowHeading"
                     $annotator->annotateTableHeading($data, CanonicalTableAnnotator::ROW_HEADING_TITLE,
                         $annotated_canonical_table_model->id);
