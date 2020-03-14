@@ -44,37 +44,26 @@ class SpreadsheetController extends Controller
      *
      * @param $ner_resource - NER-метка
      * @param $entry - значение ячейки
+     * @param $heading_title - имя столбца
      * @param $canonical_table_id - идентификатор канонической таблицы в БД
      */
-    public function actionAnnotateLiteralCell($ner_resource, $entry, $canonical_table_id)
+    public function actionAnnotateLiteralCell($ner_resource, $entry, $heading_title, $canonical_table_id)
     {
-        // Переменная хранения сущности для ячейки с литеральными данными в столбце "DATA"
-        $found_entity = '';
-        // Подключение к DBpedia
-        $sparql_client = new SparqlClient();
-        $sparql_client->setEndpointRead(CanonicalTableAnnotator::ENDPOINT_NAME);
-        // SPARQL-запрос к DBpedia для поиска точного совпадения c сущностью
-        $query = "SELECT ?subject ?property ?object
-            FROM <http://dbpedia.org>
-            WHERE {
-                ?subject ?property ?object . FILTER(?subject = <$ner_resource>)
-            } LIMIT 1";
-        $rows = $sparql_client->query($query, 'rows');
-        $error = $sparql_client->getErrors();
-        // Если нет ошибок при запросе и есть результат запроса
-        if (!$error && $rows['result']['rows'])
-            // Запоминание найденной сущности в онтологии DBpedia
-            $found_entity = $rows['result']['rows'][0]['subject'];
         // Сохранение значения ячейки канонической таблицы в БД
         $cell_value_model = new CellValue();
         $cell_value_model->name = $entry;
-        $cell_value_model->type = CellValue::DATA;
-        $cell_value_model->execution_time = $rows['query_time'];
+        if ($heading_title == CanonicalTableAnnotator::DATA_TITLE)
+            $cell_value_model->type = CellValue::DATA;
+        if ($heading_title == CanonicalTableAnnotator::ROW_HEADING_TITLE)
+            $cell_value_model->type = CellValue::ROW_HEADING;
+        if ($heading_title == CanonicalTableAnnotator::COLUMN_HEADING_TITLE)
+            $cell_value_model->type = CellValue::COLUMN_HEADING;
+        $cell_value_model->execution_time = 0;
         $cell_value_model->annotated_canonical_table = $canonical_table_id;
         $cell_value_model->save();
         // Сохранение найденной сущности кандидата в БД
         $candidate_entity_model = new CandidateEntity();
-        $candidate_entity_model->entity = $found_entity;
+        $candidate_entity_model->entity = $ner_resource;
         $candidate_entity_model->aggregated_rank = 1;
         $candidate_entity_model->cell_value = $cell_value_model->id;
         $candidate_entity_model->save();
@@ -412,6 +401,98 @@ class SpreadsheetController extends Controller
     }
 
     /**
+     * Определение кол-ва корректно аннотированных элементов для набора данных Troy200.
+     *
+     * @param $dbpedia_data - данные о метках DBpedia из файла XLSX
+     * @param $all_annotated_rows - набор всех строк текущей аннотированной канонической таблицы
+     * @param $annotated_canonical_table_model - модель аннотированной таблицы
+     */
+    public function calculateTroy200($dbpedia_data, $all_annotated_rows, $annotated_canonical_table_model)
+    {
+        // Подсчет корректно аннотированных значений ячеек
+        foreach ($dbpedia_data as $table_row_key => $table_row)
+            foreach ($table_row as $heading => $value) {
+                if ($heading == CanonicalTableAnnotator::DATA_TITLE)
+                    foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
+                        if ($table_row_key == $annotated_row_key && $value == $annotated_row->data)
+                            $annotated_canonical_table_model->correctly_annotated_element_number++;
+                if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE) {
+                    $string_array = explode(" | ", $value);
+                    foreach ($string_array as $string)
+                        foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
+                            if ($table_row_key == $annotated_row_key) {
+                                $annotated_row_heading = explode(" | ",
+                                    $annotated_row->row_heading);
+                                foreach ($annotated_row_heading as $annotated_value)
+                                    if ($string == $annotated_value)
+                                        $annotated_canonical_table_model->correctly_annotated_element_number++;
+                            }
+                }
+                if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE) {
+                    $string_array = explode(" | ", $value);
+                    foreach ($string_array as $string)
+                        foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
+                            if ($table_row_key == $annotated_row_key) {
+                                $annotated_column_heading = explode(" | ",
+                                    $annotated_row->column_heading);
+                                foreach ($annotated_column_heading as $annotated_value)
+                                    if ($string == $annotated_value)
+                                        $annotated_canonical_table_model->correctly_annotated_element_number++;
+                            }
+                }
+            }
+    }
+
+    /**
+     * Определение кол-ва корректно аннотированных элементов для набора данных T2Dv2.
+     *
+     * @param $dbpedia_data - данные о метках DBpedia из файла XLSX
+     * @param $annotated_canonical_table_model - модель аннотированной таблицы
+     */
+    public function calculateT2Dv2($dbpedia_data, $annotated_canonical_table_model)
+    {
+        // Обнуление общего кол-ва ячеек канонической таблицы
+        $annotated_canonical_table_model->total_element_number = 0;
+        // Обнуление кол-ва аннотированных ячеек канонической таблицы
+        $annotated_canonical_table_model->annotated_element_number = 0;
+        // Поиск всех значений ячеек столбца с данными "DATA"
+        $cell_values = CellValue::find()
+            ->where(['annotated_canonical_table' => $annotated_canonical_table_model->id,
+                'type' => CellValue::DATA])
+            ->all();
+        // Обход массива данных с метками DBpedia из исходной канонической таблицы
+        foreach ($dbpedia_data as $table_row)
+            foreach ($table_row as $value)
+                if (!empty($value)) {
+                    // Подсчет общего кол-ва ячеек канонической таблицы
+                    $annotated_canonical_table_model->total_element_number++;
+                    // Разбиение строки таблицы на строковые части
+                    $string_array = explode(',', $value);
+                    // Удаление кавычек с начала и конца из строковой части - оригинального значения ячейки
+                    $source_element = trim($string_array[1], '"');
+                    // Обход всех значений ячеек столбца "DATA"
+                    foreach ($cell_values as $cell_value)
+                        // Если значения ячейки из канонической таблицы и БД совпадают
+                        if ($cell_value->name == $source_element) {
+                            // Получение первой записи с сущностью кандидатом с самым высоким агрегированным рангом
+                            $candidate_entity = CandidateEntity::find()
+                                ->where(['cell_value' => $cell_value->id])
+                                ->orderBy('aggregated_rank DESC')
+                                ->one();
+                            // Если выборка сущности кандидата не пустая
+                            if (!empty($candidate_entity)) {
+                                // Подсчет кол-ва аннотированных ячеек канонической таблицы
+                                $annotated_canonical_table_model->annotated_element_number++;
+                                // Если сущность кандидат равна сущности из проверочной таблицы
+                                if ($candidate_entity->entity == $string_array[0])
+                                   // Подсчет кол-ва корректно аннотированных ячеек канонической таблицы
+                                   $annotated_canonical_table_model->correctly_annotated_element_number++;
+                            }
+                        }
+            }
+    }
+
+    /**
      * Команда запуска аннотатора канонических таблиц.
      */
     public function actionAnnotate()
@@ -436,21 +517,21 @@ class SpreadsheetController extends Controller
                 if ($file_name != '.' && $file_name != '..') {
                     // Начало отсчета времени обработки таблицы
                     $table_runtime = microtime(true);
-                    // Получение данных из файла XSLX
+                    // Получение данных из файла XLSX
                     $data = Excel::import('web/dataset/' . $file_name, [
                         'setFirstRecordAsKeys' => true,
                         'setIndexSheetByName' => true,
                         'getOnlySheet' => ExcelFileForm::CANONICAL_FORM,
                     ]);
-                    // Получение данных о метках NER из файла XSLX
+                    // Получение данных о метках NER из файла XLSX
                     $ner_data = Excel::import('web/dataset/' . $file_name, [
                         'setFirstRecordAsKeys' => true,
                         'setIndexSheetByName' => true,
                         'getOnlySheet' => ExcelFileForm::NER_TAGS,
                     ]);
-                    // Получение данных о метках DBpedia из файла XSLX
+                    // Получение данных о метках DBpedia из файла XLSX
                     $dbpedia_data = Excel::import('web/dataset/' . $file_name, [
-                        'setFirstRecordAsKeys' => true,
+                        'setFirstRecordAsKeys' => false,
                         'setIndexSheetByName' => true,
                         'getOnlySheet' => ExcelFileForm::DBPEDIA_TAGS,
                     ]);
@@ -475,12 +556,11 @@ class SpreadsheetController extends Controller
                     // Аннотирование столбца "DATA"
                     $annotator->annotateTableData($data, $ner_data, $annotated_canonical_table_model->id);
                     // Аннотирование столбца "RowHeading"
-                    $annotator->annotateTableHeading($data, CanonicalTableAnnotator::ROW_HEADING_TITLE,
-                        $annotated_canonical_table_model->id);
+                    $annotator->annotateTableHeading($data, $ner_data,
+                        CanonicalTableAnnotator::ROW_HEADING_TITLE, $annotated_canonical_table_model->id);
                     // Аннотирование столбца "ColumnHeading"
-                    $annotator->annotateTableHeading($data,
-                        CanonicalTableAnnotator::COLUMN_HEADING_TITLE,
-                        $annotated_canonical_table_model->id);
+                    $annotator->annotateTableHeading($data, $ner_data,
+                        CanonicalTableAnnotator::COLUMN_HEADING_TITLE, $annotated_canonical_table_model->id);
 
                     // Обход массива данных исходной канонической таблицы
                     foreach ($data as $item) {
@@ -519,8 +599,10 @@ class SpreadsheetController extends Controller
                                 $string_array = explode(" | ", $value);
                                 foreach ($string_array as $key => $string) {
                                     $existing_entity = '';
-                                    // Подсчет общего кол-ва ячеек канонической таблицы
-                                    $annotated_canonical_table_model->total_element_number++;
+                                    // Если есть значение в ячейке
+                                    if ($value != '')
+                                        // Подсчет общего кол-ва ячеек канонической таблицы
+                                        $annotated_canonical_table_model->total_element_number++;
                                     // Поиск значения ячейки столбца с данными "RowHeading"
                                     $cell_value = CellValue::find()
                                         ->where(['annotated_canonical_table' => $annotated_canonical_table_model->id,
@@ -556,8 +638,10 @@ class SpreadsheetController extends Controller
                                 $string_array = explode(" | ", $value);
                                 foreach ($string_array as $key => $string) {
                                     $existing_entity = '';
-                                    // Подсчет общего кол-ва ячеек канонической таблицы
-                                    $annotated_canonical_table_model->total_element_number++;
+                                    // Если есть значение в ячейке
+                                    if ($value != '')
+                                        // Подсчет общего кол-ва ячеек канонической таблицы
+                                        $annotated_canonical_table_model->total_element_number++;
                                     // Поиск всех значений ячеек столбца с данными "ColumnHeading"
                                     $cell_value = CellValue::find()
                                         ->where(['annotated_canonical_table' => $annotated_canonical_table_model->id,
@@ -607,46 +691,18 @@ class SpreadsheetController extends Controller
                         'columns' => ['data', 'row_heading', 'column_heading'],
                         'headers' => [
                             'data' => 'DATA',
-                            'row_heading' => 'RowHeading1',
+                            'row_heading' => 'RowHeading',
                             'column_heading' => 'ColumnHeading'
                         ],
                     ]);
-                    // Подсчет корректно аннотированных значений ячеек
-                    foreach ($dbpedia_data as $table_row_key => $table_row)
-                        foreach ($table_row as $heading => $value) {
-                            if ($heading == CanonicalTableAnnotator::DATA_TITLE)
-                                foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
-                                    if ($table_row_key == $annotated_row_key && $value == $annotated_row->data)
-                                        $annotated_canonical_table_model->correctly_annotated_element_number++;
-                            if ($heading == CanonicalTableAnnotator::ROW_HEADING_TITLE) {
-                                $string_array = explode(" | ", $value);
-                                foreach ($string_array as $string)
-                                    foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
-                                        if ($table_row_key == $annotated_row_key) {
-                                            $annotated_row_heading = explode(" | ",
-                                                $annotated_row->row_heading);
-                                            foreach ($annotated_row_heading as $annotated_value)
-                                                if ($string == $annotated_value)
-                                                    $annotated_canonical_table_model->correctly_annotated_element_number++;
-                                        }
-                            }
-                            if ($heading == CanonicalTableAnnotator::COLUMN_HEADING_TITLE) {
-                                $string_array = explode(" | ", $value);
-                                foreach ($string_array as $string)
-                                    foreach ($all_annotated_rows as $annotated_row_key => $annotated_row)
-                                        if ($table_row_key == $annotated_row_key) {
-                                            $annotated_column_heading = explode(" | ",
-                                                $annotated_row->column_heading);
-                                            foreach ($annotated_column_heading as $annotated_value)
-                                                if ($string == $annotated_value)
-                                                    $annotated_canonical_table_model->correctly_annotated_element_number++;
-                                        }
-                            }
-                        }
                     // Вычисление правильности (accuracy)
                     $annotated_canonical_table_model->accuracy =
                         $annotated_canonical_table_model->annotated_element_number /
                         $annotated_canonical_table_model->total_element_number;
+                    // Определение кол-ва аннотированных элементов для набора данных Troy200
+                    //$this->calculateTroy200($dbpedia_data, $all_annotated_rows, $annotated_canonical_table_model);
+                    // Определение кол-ва аннотированных элементов для набора данных T2Dv2
+                    $this->calculateT2Dv2($dbpedia_data, $annotated_canonical_table_model);
                     // Вычисление точности (precision)
                     $annotated_canonical_table_model->precision =
                         $annotated_canonical_table_model->correctly_annotated_element_number /
