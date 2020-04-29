@@ -86,7 +86,7 @@ class SpreadsheetController extends Controller
         $query = "PREFIX dbr: <http://dbpedia.org/resource/>
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             SELECT ?subject rdf:type ?object
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE { { ?subject a ?object . FILTER( (?subject = dbr:$value) && (strstarts(str(?subject), str(dbr:))) ) } 
                 UNION { ?subject a ?object . FILTER ( regex(str(?subject), '$value', 'i') &&
                     (strstarts(str(?subject), str(dbr:)) && (str(?object) = str(owl:Thing))) ) }
@@ -186,7 +186,7 @@ class SpreadsheetController extends Controller
                     if ($query == "")
                         // SPARQL-запрос к DBpedia для поиска сущностей кандидатов
                         $query = "SELECT COUNT(*) as ?Triples
-                            FROM <http://dbpedia.org>
+                            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
                             WHERE {{ <$current_candidate_entity> ?property <$candidate_entity> }";
                     else
                         $query .= " UNION { <$current_candidate_entity> ?property <$candidate_entity> }";
@@ -239,7 +239,7 @@ class SpreadsheetController extends Controller
         $sparql_client->setEndpointRead(CanonicalTableAnnotator::ENDPOINT_NAME);
         // SPARQL-запрос к DBpedia для определения глубины связи текущей сущности из набора кандидатов с классом
         $query = "SELECT count(?intermediate)/2 as ?depth
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE { <$candidate_entity_name> rdf:type/rdfs:subClassOf* ?intermediate .
                 ?intermediate rdfs:subClassOf* <$ner_class>
             }";
@@ -273,7 +273,7 @@ class SpreadsheetController extends Controller
         $sparql_client->setEndpointRead(CanonicalTableAnnotator::ENDPOINT_NAME);
         $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
             SELECT ?class
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE { <$candidate_entity_name> rdf:type ?class . FILTER(strstarts(str(?class), str(dbo:))) }";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
@@ -323,7 +323,7 @@ class SpreadsheetController extends Controller
         $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
             PREFIX dbr: <http://dbpedia.org/resource/>
             SELECT ?subject ?object
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE {
                 { <$candidate_entity_name> ?property ?object .
                     FILTER(strstarts(str(?object), str(dbo:)) || strstarts(str(?object), str(dbr:))) .
@@ -356,7 +356,7 @@ class SpreadsheetController extends Controller
             }
         // Создание модели для хранения сходства сущностей кандидатов по контексту упоминания сущности
         $context_similarity_model = new ContextSimilarity();
-        $context_similarity_model->rank = 0;
+        $context_similarity_model->rank = 99;
         $context_similarity_model->execution_time = $rows['query_time'];
         $context_similarity_model->candidate_entity = $candidate_entity_id;
         $context_similarity_model->save();
@@ -376,7 +376,7 @@ class SpreadsheetController extends Controller
         // SPARQL-запрос к DBpedia ontology для поиска родительских классов для сущности
         $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
             SELECT ?class
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE {
                 <$candidate_entity_name> ?property ?class . FILTER (strstarts(str(?class), str(dbo:)))
             } LIMIT 100";
@@ -554,11 +554,14 @@ class SpreadsheetController extends Controller
                     // Создание объекта аннотатора таблиц
                     $annotator = new CanonicalTableAnnotator();
                     // Аннотирование столбца "DATA"
+                    print_r('Старт аннотирования столбца "DATA"...');
                     $annotator->annotateTableData($data, $ner_data, $annotated_canonical_table_model->id);
                     // Аннотирование столбца "RowHeading"
+                    print_r('Старт аннотирования столбца "RowHeading"...');
                     $annotator->annotateTableHeading($data, $ner_data,
                         CanonicalTableAnnotator::ROW_HEADING_TITLE, $annotated_canonical_table_model->id);
                     // Аннотирование столбца "ColumnHeading"
+                    print_r('Старт аннотирования столбца "ColumnHeading"...');
                     $annotator->annotateTableHeading($data, $ner_data,
                         CanonicalTableAnnotator::COLUMN_HEADING_TITLE, $annotated_canonical_table_model->id);
 
@@ -695,26 +698,31 @@ class SpreadsheetController extends Controller
                             'column_heading' => 'ColumnHeading'
                         ],
                     ]);
-                    // Вычисление правильности (accuracy)
-                    $annotated_canonical_table_model->accuracy =
-                        $annotated_canonical_table_model->annotated_element_number /
-                        $annotated_canonical_table_model->total_element_number;
+                    if ($annotated_canonical_table_model->total_element_number != 0 &&
+                        $annotated_canonical_table_model->annotated_element_number != 0)
+                        // Вычисление правильности (accuracy)
+                        $annotated_canonical_table_model->accuracy =
+                            $annotated_canonical_table_model->annotated_element_number /
+                            $annotated_canonical_table_model->total_element_number;
                     // Определение кол-ва аннотированных элементов для набора данных Troy200
                     //$this->calculateTroy200($dbpedia_data, $all_annotated_rows, $annotated_canonical_table_model);
                     // Определение кол-ва аннотированных элементов для набора данных T2Dv2
                     $this->calculateT2Dv2($dbpedia_data, $annotated_canonical_table_model);
-                    // Вычисление точности (precision)
-                    $annotated_canonical_table_model->precision =
-                        $annotated_canonical_table_model->correctly_annotated_element_number /
-                        $annotated_canonical_table_model->annotated_element_number;
-                    // Вычисление полноты (recall)
-                    $annotated_canonical_table_model->recall =
-                        $annotated_canonical_table_model->correctly_annotated_element_number /
-                        $annotated_canonical_table_model->total_element_number;
-                    // Вычисление F-меры (F1 score)
-                    $annotated_canonical_table_model->f_score = (2 * $annotated_canonical_table_model->precision *
-                            $annotated_canonical_table_model->recall) / ($annotated_canonical_table_model->precision +
-                            $annotated_canonical_table_model->recall);
+                    if ($annotated_canonical_table_model->total_element_number != 0 &&
+                        $annotated_canonical_table_model->annotated_element_number != 0) {
+                        // Вычисление точности (precision)
+                        $annotated_canonical_table_model->precision =
+                            $annotated_canonical_table_model->correctly_annotated_element_number /
+                            $annotated_canonical_table_model->annotated_element_number;
+                        // Вычисление полноты (recall)
+                        $annotated_canonical_table_model->recall =
+                            $annotated_canonical_table_model->correctly_annotated_element_number /
+                            $annotated_canonical_table_model->total_element_number;
+                        // Вычисление F-меры (F1 score)
+                        $annotated_canonical_table_model->f_score = (2 * $annotated_canonical_table_model->precision *
+                                $annotated_canonical_table_model->recall) / ($annotated_canonical_table_model->precision +
+                                $annotated_canonical_table_model->recall);
+                    }
                     // Запись времени обработки таблицы
                     $annotated_canonical_table_model->runtime = round(microtime(true) -
                         $table_runtime, 4);
@@ -730,5 +738,6 @@ class SpreadsheetController extends Controller
         // Вычисление и запись общего времени выполнения аннотирования набора данных в БД
         $annotated_dataset_model->runtime = round(microtime(true) - $dataset_runtime, 4);
         $annotated_dataset_model->updateAttributes(['runtime']);
+        print_r('Аннотирование таблицы завершено!');
     }
 }

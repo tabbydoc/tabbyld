@@ -23,36 +23,37 @@ use app\modules\main\models\SemanticSimilarity;
 class CanonicalTableAnnotator
 {
     // Названия меток NER-аннотатора Stanford NLP
-    const NUMBER_NER_LABEL = 'NUMBER';
-    const DATE_NER_LABEL = 'DATE';
-    const TIME_NER_LABEL = 'TIME';
-    const MONEY_NER_LABEL = 'MONEY';
-    const PERCENT_NER_LABEL = 'PERCENT';
-    const NONE_NER_LABEL = 'NONE';
-    const LOCATION_NER_LABEL = 'LOCATION';
-    const PERSON_NER_LABEL = 'PERSON';
+    const NUMBER_NER_LABEL       = 'NUMBER';
+    const DATE_NER_LABEL         = 'DATE';
+    const TIME_NER_LABEL         = 'TIME';
+    const MONEY_NER_LABEL        = 'MONEY';
+    const PERCENT_NER_LABEL      = 'PERCENT';
+    const NONE_NER_LABEL         = 'NONE';
+    const LOCATION_NER_LABEL     = 'LOCATION';
+    const PERSON_NER_LABEL       = 'PERSON';
     const ORGANIZATION_NER_LABEL = 'ORGANIZATION';
-    const MISC_NER_LABEL = 'MISC';
+    const MISC_NER_LABEL         = 'MISC';
 
     // Названия (адреса) классов и экземпляров классов в онтологии DBpedia соответствующие меткам NER
-    const LOCATION_ONTOLOGY_CLASS = 'http://dbpedia.org/ontology/Location';
-    const PERSON_ONTOLOGY_CLASS = 'http://dbpedia.org/ontology/Person';
+    const LOCATION_ONTOLOGY_CLASS     = 'http://dbpedia.org/ontology/Location';
+    const PERSON_ONTOLOGY_CLASS       = 'http://dbpedia.org/ontology/Person';
     const ORGANISATION_ONTOLOGY_CLASS = 'http://dbpedia.org/ontology/Organisation';
-    const NUMBER_ONTOLOGY_INSTANCE = 'http://dbpedia.org/resource/Number';
-    const MONEY_ONTOLOGY_INSTANCE = 'http://dbpedia.org/resource/Money';
-    const PERCENT_ONTOLOGY_INSTANCE = 'http://dbpedia.org/resource/Percent';
-    const DATE_ONTOLOGY_INSTANCE = 'http://dbpedia.org/resource/Date';
-    const TIME_ONTOLOGY_INSTANCE = 'http://dbpedia.org/resource/Time';
+    const NUMBER_ONTOLOGY_INSTANCE    = 'http://dbpedia.org/resource/Number';
+    const MONEY_ONTOLOGY_INSTANCE     = 'http://dbpedia.org/resource/Money';
+    const PERCENT_ONTOLOGY_INSTANCE   = 'http://dbpedia.org/resource/Percent';
+    const DATE_ONTOLOGY_INSTANCE      = 'http://dbpedia.org/resource/Date';
+    const TIME_ONTOLOGY_INSTANCE      = 'http://dbpedia.org/resource/Time';
 
-    const ENDPOINT_NAME = 'https://dbpedia.org/sparql'; // Название точки доступа SPARQL
+    const ENDPOINT_NAME  = 'https://dbpedia.org/sparql'; // Название точки доступа SPARQL
+    const GRAPH_IRI_NAME = '<http://dbpedia.org>';       // Название графа знаний
 
     const DBPEDIA_ONTOLOGY_SECTION = 'http://dbpedia.org/ontology/'; // Название (адрес) сегмента онтологии DBpedia
     const DBPEDIA_RESOURCE_SECTION = 'http://dbpedia.org/resource/'; // Название (адрес) сегмента ресурсов DBpedia
     const DBPEDIA_PROPERTY_SECTION = 'http://dbpedia.org/property/'; // Название (адрес) сегмента свойств DBpedia
 
-    const DATA_TITLE = 'DATA';                         // Имя первого заголовка столбца канонической таблицы
-    const ROW_HEADING_TITLE = 'RowHeading';            // Имя второго заголовка столбца канонической таблицы
-    const COLUMN_HEADING_TITLE = 'ColumnHeading';      // Имя третьего заголовка столбца канонической таблицы
+    const DATA_TITLE           = 'DATA';          // Имя первого заголовка столбца канонической таблицы
+    const ROW_HEADING_TITLE    = 'RowHeading';    // Имя второго заголовка столбца канонической таблицы
+    const COLUMN_HEADING_TITLE = 'ColumnHeading'; // Имя третьего заголовка столбца канонической таблицы
 
     /**
      * Удаление каталога со всеми файлами.
@@ -149,7 +150,7 @@ class CanonicalTableAnnotator
         if ($section != '')
             // SPARQL-запрос к DBpedia для поиска сущностей кандидатов из определенного сегмента
             $query = "SELECT ?subject ?property ?object
-                FROM <http://dbpedia.org>
+                FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
                 WHERE {
                     ?subject ?property ?object . FILTER contains(str(?subject), '$value') .
                     FILTER(strstarts(str(?subject), '$section'))
@@ -160,7 +161,7 @@ class CanonicalTableAnnotator
                 PREFIX db: <http://dbpedia.org/resource/>
                 PREFIX owl: <http://www.w3.org/2002/07/owl#>
                 SELECT ?subject rdf:type ?object
-                FROM <http://dbpedia.org>
+                FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
                 WHERE { ?subject a ?object . FILTER ( contains(str(?subject), '$value') &&
                     ( (strstarts(str(?subject), str(dbo:)) && (str(?object) = str(owl:Class))) ||
                     (strstarts(str(?subject), str(db:)) && (str(?object) = str(owl:Thing))) ) )
@@ -193,7 +194,7 @@ class CanonicalTableAnnotator
         // SPARQL-запрос к DBpedia ontology для поиска родительских классов для сущности
         $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
             SELECT ?class
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE {
                 <$entity> ?property ?class . FILTER (strstarts(str(?class), str(dbo:)))
             } LIMIT 100";
@@ -433,7 +434,7 @@ class CanonicalTableAnnotator
         $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
         // SPARQL-запрос к DBpedia для определения глубины связи текущей сущности из набора кандидатов с классом
         $query = "SELECT count(?intermediate)/2 as ?depth
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE { <$candidate_entity_name> rdf:type/rdfs:subClassOf* ?intermediate .
                 ?intermediate rdfs:subClassOf* <$ner_class>
             }";
@@ -467,7 +468,7 @@ class CanonicalTableAnnotator
         $sparql_client->setEndpointRead(self::ENDPOINT_NAME);
         $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
             SELECT ?class
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE { <$candidate_entity_name> rdf:type ?class . FILTER(strstarts(str(?class), str(dbo:))) }";
         $rows = $sparql_client->query($query, 'rows');
         $error = $sparql_client->getErrors();
@@ -694,7 +695,7 @@ class CanonicalTableAnnotator
         $query = "PREFIX dbo: <http://dbpedia.org/ontology/>
             PREFIX dbr: <http://dbpedia.org/resource/>
             SELECT ?subject ?object
-            FROM <http://dbpedia.org>
+            FROM " . CanonicalTableAnnotator::GRAPH_IRI_NAME . "
             WHERE {
                 { <$candidate_entity> ?property ?object .
                     FILTER(strstarts(str(?object), str(dbo:)) || strstarts(str(?object), str(dbr:))) .
