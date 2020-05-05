@@ -17,7 +17,7 @@ class m200203_123803_candidate_entity extends Migration
             'id' => $this->primaryKey(),
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
-            'entity' => $this->string()->notNull(),
+            'entity' => $this->text()->notNull(),
             'levenshtein_distance' => $this->double(),
             'aggregated_rank' => $this->double(),
             'cell_value' => $this->integer()->notNull(),

@@ -17,7 +17,7 @@ class m200213_134434_entity_context extends Migration
             'id' => $this->primaryKey(),
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
-            'context' => $this->string()->notNull(),
+            'context' => $this->text()->notNull(),
             'candidate_entity' => $this->integer()->notNull(),
         ], $tableOptions);
 

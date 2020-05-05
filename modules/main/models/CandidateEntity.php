@@ -44,7 +44,7 @@ class CandidateEntity extends \yii\db\ActiveRecord
             [['cell_value'], 'integer'],
             [['levenshtein_distance', 'aggregated_rank'], 'default', 'value' => null],
             [['levenshtein_distance', 'aggregated_rank'], 'number'],
-            [['entity'], 'string', 'max' => 1000],
+            [['entity'], 'string'],
             [['cell_value'], 'exist', 'skipOnError' => true, 'targetClass' => CellValue::className(),
                 'targetAttribute' => ['cell_value' => 'id']],
         ];

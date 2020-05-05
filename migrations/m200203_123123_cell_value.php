@@ -17,7 +17,7 @@ class m200203_123123_cell_value extends Migration
             'id' => $this->primaryKey(),
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
-            'name' => $this->string()->notNull(),
+            'name' => $this->text()->notNull(),
             'execution_time' => $this->double()->notNull(),
             'type' => $this->smallInteger()->notNull()->defaultValue(0),
 

@@ -17,7 +17,7 @@ class m200214_085804_parent_class extends Migration
             'id' => $this->primaryKey(),
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
-            'class' => $this->string()->notNull(),
+            'class' => $this->text()->notNull(),
             'candidate_entity' => $this->integer()->notNull(),
         ], $tableOptions);
 

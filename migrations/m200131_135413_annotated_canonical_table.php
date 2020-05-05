@@ -26,7 +26,7 @@ class m200131_135413_annotated_canonical_table extends Migration
             'recall' => $this->double()->notNull(),
             'f_score' => $this->double()->notNull(),
             'runtime' => $this->double()->notNull(),
-            'description' => $this->string(),
+            'description' => $this->text(),
             'annotated_dataset' => $this->integer()->notNull(),
         ], $tableOptions);
 

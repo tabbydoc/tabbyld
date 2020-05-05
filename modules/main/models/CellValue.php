@@ -42,7 +42,7 @@ class CellValue extends \yii\db\ActiveRecord
             [['name', 'annotated_canonical_table'], 'required'],
             [['type', 'annotated_canonical_table'], 'integer'],
             [['execution_time'], 'number'],
-            [['name'], 'string', 'max' => 1000],
+            [['name'], 'string'],
             [['annotated_canonical_table'], 'exist', 'skipOnError' => true,
                 'targetClass' => AnnotatedCanonicalTable::className(),
                 'targetAttribute' => ['annotated_canonical_table' => 'id']],

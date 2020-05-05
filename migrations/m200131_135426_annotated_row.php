@@ -17,9 +17,9 @@ class m200131_135426_annotated_row extends Migration
             'id' => $this->primaryKey(),
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
-            'data' => $this->string(),
-            'row_heading' => $this->string(),
-            'column_heading' => $this->string(),
+            'data' => $this->text(),
+            'row_heading' => $this->text(),
+            'column_heading' => $this->text(),
             'annotated_canonical_table' => $this->integer()->notNull(),
         ], $tableOptions);
 

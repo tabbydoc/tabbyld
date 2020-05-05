@@ -36,7 +36,7 @@ class AnnotatedRow extends \yii\db\ActiveRecord
         return [
             ['annotated_canonical_table', 'required'],
             ['annotated_canonical_table', 'integer'],
-            [['data', 'row_heading', 'column_heading'], 'string', 'max' => 1000],
+            [['data', 'row_heading', 'column_heading'], 'string'],
             [['annotated_canonical_table'], 'exist', 'skipOnError' => true,
                 'targetClass' => AnnotatedCanonicalTable::className(),
                 'targetAttribute' => ['annotated_canonical_table' => 'id']],

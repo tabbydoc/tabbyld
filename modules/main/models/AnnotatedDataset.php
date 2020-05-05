@@ -45,8 +45,7 @@ class AnnotatedDataset extends \yii\db\ActiveRecord
             [['name', 'accuracy', 'precision', 'recall', 'f_score', 'runtime'], 'required'],
             ['status', 'integer'],
             [['accuracy', 'precision', 'recall', 'f_score', 'runtime'], 'double'],
-            [['name', 'author'], 'string', 'max' => 300],
-            [['description'], 'string', 'max' => 1000],
+            [['name', 'author', 'description'], 'string'],
         ];
     }
 

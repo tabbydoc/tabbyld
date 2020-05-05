@@ -47,8 +47,7 @@ class AnnotatedCanonicalTable extends \yii\db\ActiveRecord
             [['total_element_number', 'annotated_element_number', 'correctly_annotated_element_number',
                 'annotated_dataset'], 'integer'],
             [['accuracy', 'precision', 'recall', 'f_score', 'runtime'], 'double'],
-            [['name'], 'string', 'max' => 300],
-            [['description'], 'string', 'max' => 1000],
+            [['name', 'description'], 'string'],
             [['annotated_dataset'], 'exist', 'skipOnError' => true, 'targetClass' => AnnotatedDataset::className(),
                 'targetAttribute' => ['annotated_dataset' => 'id']],
         ];
