@@ -114,13 +114,14 @@ class SpreadsheetController extends Controller
         $cell_value_model->annotated_canonical_table = $canonical_table_id;
         $cell_value_model->save();
         // Обход всех сущностей кандидатов
-        foreach ($candidate_entities as $candidate_entity) {
-            // Сохранение сущности кандидата в БД
-            $candidate_entity_model = new CandidateEntity();
-            $candidate_entity_model->entity = $candidate_entity;
-            $candidate_entity_model->cell_value = $cell_value_model->id;
-            $candidate_entity_model->save();
-        }
+        foreach ($candidate_entities as $candidate_entity)
+            if ($candidate_entity != '') {
+                // Сохранение сущности кандидата в БД
+                $candidate_entity_model = new CandidateEntity();
+                $candidate_entity_model->entity = $candidate_entity;
+                $candidate_entity_model->cell_value = $cell_value_model->id;
+                $candidate_entity_model->save();
+            }
     }
 
     /**
@@ -554,14 +555,14 @@ class SpreadsheetController extends Controller
                     // Создание объекта аннотатора таблиц
                     $annotator = new CanonicalTableAnnotator();
                     // Аннотирование столбца "DATA"
-                    print_r('Старт аннотирования столбца "DATA"...');
+                    print_r('Старт аннотирования столбца "DATA"...' . PHP_EOL);
                     $annotator->annotateTableData($data, $ner_data, $annotated_canonical_table_model->id);
                     // Аннотирование столбца "RowHeading"
-                    print_r('Старт аннотирования столбца "RowHeading"...');
+                    print_r('Старт аннотирования столбца "RowHeading"...' . PHP_EOL);
                     $annotator->annotateTableHeading($data, $ner_data,
                         CanonicalTableAnnotator::ROW_HEADING_TITLE, $annotated_canonical_table_model->id);
                     // Аннотирование столбца "ColumnHeading"
-                    print_r('Старт аннотирования столбца "ColumnHeading"...');
+                    print_r('Старт аннотирования столбца "ColumnHeading"...' . PHP_EOL);
                     $annotator->annotateTableHeading($data, $ner_data,
                         CanonicalTableAnnotator::COLUMN_HEADING_TITLE, $annotated_canonical_table_model->id);
 
@@ -698,9 +699,9 @@ class SpreadsheetController extends Controller
                             'column_heading' => 'ColumnHeading'
                         ],
                     ]);
+                    // Вычисление правильности (accuracy)
                     if ($annotated_canonical_table_model->total_element_number != 0 &&
                         $annotated_canonical_table_model->annotated_element_number != 0)
-                        // Вычисление правильности (accuracy)
                         $annotated_canonical_table_model->accuracy =
                             $annotated_canonical_table_model->annotated_element_number /
                             $annotated_canonical_table_model->total_element_number;
@@ -708,21 +709,22 @@ class SpreadsheetController extends Controller
                     //$this->calculateTroy200($dbpedia_data, $all_annotated_rows, $annotated_canonical_table_model);
                     // Определение кол-ва аннотированных элементов для набора данных T2Dv2
                     $this->calculateT2Dv2($dbpedia_data, $annotated_canonical_table_model);
-                    if ($annotated_canonical_table_model->total_element_number != 0 &&
-                        $annotated_canonical_table_model->annotated_element_number != 0) {
-                        // Вычисление точности (precision)
+                    // Вычисление точности (precision)
+                    if ($annotated_canonical_table_model->annotated_element_number != 0)
                         $annotated_canonical_table_model->precision =
                             $annotated_canonical_table_model->correctly_annotated_element_number /
                             $annotated_canonical_table_model->annotated_element_number;
-                        // Вычисление полноты (recall)
+                    // Вычисление полноты (recall)
+                    if ($annotated_canonical_table_model->total_element_number != 0)
                         $annotated_canonical_table_model->recall =
                             $annotated_canonical_table_model->correctly_annotated_element_number /
                             $annotated_canonical_table_model->total_element_number;
-                        // Вычисление F-меры (F1 score)
+                    // Вычисление F-меры (F1 score)
+                    if ($annotated_canonical_table_model->precision != 0 &&
+                        $annotated_canonical_table_model->recall != 0)
                         $annotated_canonical_table_model->f_score = (2 * $annotated_canonical_table_model->precision *
-                                $annotated_canonical_table_model->recall) / ($annotated_canonical_table_model->precision +
-                                $annotated_canonical_table_model->recall);
-                    }
+                        $annotated_canonical_table_model->recall) / ($annotated_canonical_table_model->precision +
+                        $annotated_canonical_table_model->recall);
                     // Запись времени обработки таблицы
                     $annotated_canonical_table_model->runtime = round(microtime(true) -
                         $table_runtime, 4);
