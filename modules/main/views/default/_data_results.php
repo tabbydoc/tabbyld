@@ -1,12 +1,9 @@
 <?php
 /* @var $data_concept_query_results app\modules\main\controllers\DefaultController */
-/* @var $all_data_concept_query_runtime app\modules\main\controllers\DefaultController */
-/* @var $parent_data_class_candidates app\modules\main\controllers\DefaultController */
 ?>
 
 <?php if($data_concept_query_results): ?>
-    <h2><?= Yii::t('app', 'TABLE_ANNOTATION_PAGE_DATA_CONCEPT_QUERY_RESULTS') .
-        ' (' . round($all_data_concept_query_runtime, 3) . ')' ?></h2>
+    <h2><?= Yii::t('app', 'TABLE_ANNOTATION_PAGE_DATA_CONCEPT_QUERY_RESULTS') ?></h2>
     <table class="table table-striped table-bordered">
         <tr>
             <?php foreach($data_concept_query_results[0]['result']['variables'] as $variable): ?>
@@ -23,24 +20,4 @@
             <?php endforeach; ?>
         <?php endforeach; ?>
     </table>
-<?php endif; ?>
-
-<?php if($parent_data_class_candidates): ?>
-    <?php foreach($parent_data_class_candidates as $concept => $parent_data_class_candidate): ?>
-        <h2><?= Yii::t('app', 'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY'); ?>
-            <a href="<?= $concept; ?>"><?= $concept; ?></a>
-        </h2>
-        <table class="table table-striped table-bordered">
-            <tr>
-                <td><b>class</b></td>
-                <td><b>rank</b></td>
-            </tr>
-            <?php foreach($parent_data_class_candidate as $row): ?>
-                <tr>
-                    <td><?= $row[0]; ?></td>
-                    <td><?= $row[1]; ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </table>
-    <?php endforeach; ?>
 <?php endif; ?>

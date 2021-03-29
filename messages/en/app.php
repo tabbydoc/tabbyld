@@ -80,6 +80,7 @@ return [
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Property query results for ColumnHeading',
     'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY' => 'Parent classes for: ',
     /* Сообщения для страницы аннотирования таблиц */
+    'TABLE_ANNOTATION_MESSAGE_UPLOAD_TABLE' => 'You have successfully uploaded canonical table!',
     'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'You have successfully annotated canonical table!',
     /* Страница модального окна для аннотирования таблиц */
     'TABLE_ANNOTATION_PAGE_SELECT_PARENT_CLASS' => 'Select parent class',
@@ -112,4 +113,115 @@ return [
     'LANG_MODEL_LOCAL' => 'Local',
     'LANG_MODEL_NAME' => 'Name',
     'LANG_MODEL_DEFAULT' => 'Default language',
+
+    /* AnnotatedDataset */
+    'ANNOTATED_DATASET_MODEL_ID' => 'ID',
+    'ANNOTATED_DATASET_MODEL_CREATED_AT' => 'Created at',
+    'ANNOTATED_DATASET_MODEL_UPDATED_AT' => 'Updated at',
+    'ANNOTATED_DATASET_MODEL_NAME' => 'Name',
+    'ANNOTATED_DATASET_MODEL_AUTHOR' => 'Author',
+    'ANNOTATED_DATASET_MODEL_STATUS' => 'Status',
+    'ANNOTATED_DATASET_MODEL_ACCURACY' => 'Accuracy',
+    'ANNOTATED_DATASET_MODEL_PRECISION' => 'Precision',
+    'ANNOTATED_DATASET_MODEL_RECALL' => 'Recall',
+    'ANNOTATED_DATASET_MODEL_F_SCORE' => 'F Score',
+    'ANNOTATED_DATASET_MODEL_RUNTIME' => 'Runtime',
+    'ANNOTATED_DATASET_MODEL_DESCRIPTION' => 'Description',
+
+    /* AnnotatedCanonicalTable */
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ID' => 'ID',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_CREATED_AT' => 'Created at',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_UPDATED_AT' => 'Updated at',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_NAME' => 'Name',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_TOTAL_ELEMENT_NUMBER' => 'Total element number',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_ELEMENT_NUMBER' => 'Annotated element number',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_CORRECTLY_ANNOTATED_ELEMENT_NUMBER' => 'Correctly annotated element number',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ACCURACY' => 'Accuracy',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_PRECISION' => 'Precision',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_RECALL' => 'Recall',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_F_SCORE' => 'F Score',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_RUNTIME' => 'Runtime',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_DESCRIPTION' => 'Description',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_DATASET' => 'Dataset',
+
+    /* AnnotatedRow */
+    'ANNOTATED_ROW_MODEL_ID' => 'ID',
+    'ANNOTATED_ROW_MODEL_CREATED_AT' => 'Created at',
+    'ANNOTATED_ROW_MODEL_UPDATED_AT' => 'Updated at',
+    'ANNOTATED_ROW_MODEL_DATA' => 'DATA',
+    'ANNOTATED_ROW_MODEL_ROW_HEADING' => 'RowHeading1',
+    'ANNOTATED_ROW_MODEL_COLUMN_HEADING' => 'ColumnHeading',
+    'ANNOTATED_ROW_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Table',
+
+    /* CellValue */
+    'CELL_VALUE_MODEL_ID' => 'ID',
+    'CELL_VALUE_MODEL_CREATED_AT' => 'Created at',
+    'CELL_VALUE_MODEL_UPDATED_AT' => 'Updated at',
+    'CELL_VALUE_MODEL_NAME' => 'Name',
+    'CELL_VALUE_MODEL_TYPE' => 'Type',
+    'CELL_VALUE_MODEL_EXECUTION_TIME' => 'Execution time',
+    'CELL_VALUE_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Table',
+
+    /* CandidateEntity */
+    'CANDIDATE_ENTITY_MODEL_ID' => 'ID',
+    'CANDIDATE_ENTITY_MODEL_CREATED_AT' => 'Created at',
+    'CANDIDATE_ENTITY_MODEL_UPDATED_AT' => 'Updated at',
+    'CANDIDATE_ENTITY_MODEL_ENTITY' => 'Candidate entity',
+    'CANDIDATE_ENTITY_MODEL_LEVENSHTEIN_DISTANCE' => 'Levenshtein distance',
+    'CANDIDATE_ENTITY_MODEL_AGGREGATED_RANK' => 'Aggregated rank',
+    'CANDIDATE_ENTITY_MODEL_CELL_VALUE' => 'Cell value',
+
+    /* RelationshipRank */
+    'RELATIONSHIP_RANK_MODEL_ID' => 'ID',
+    'RELATIONSHIP_RANK_MODEL_CREATED_AT' => 'Created at',
+    'RELATIONSHIP_RANK_MODEL_UPDATED_AT' => 'Updated at',
+    'RELATIONSHIP_RANK_MODEL_DISTANCE' => 'Rank',
+    'RELATIONSHIP_RANK_MODEL_EXECUTION_TIME' => 'Execution time',
+    'RELATIONSHIP_RANK_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* NerClassRank */
+    'NER_CLASS_RANK_MODEL_ID' => 'ID',
+    'NER_CLASS_RANK_MODEL_CREATED_AT' => 'Created at',
+    'NER_CLASS_RANK_MODEL_UPDATED_AT' => 'Updated at',
+    'NER_CLASS_RANK_MODEL_DISTANCE' => 'Rank',
+    'NER_CLASS_RANK_MODEL_EXECUTION_TIME' => 'Execution time',
+    'NER_CLASS_RANK_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* HeadingRank */
+    'HEADING_RANK_MODEL_ID' => 'ID',
+    'HEADING_RANK_MODEL_CREATED_AT' => 'Created at',
+    'HEADING_RANK_MODEL_UPDATED_AT' => 'Updated at',
+    'HEADING_RANK_MODEL_DISTANCE' => 'Rank',
+    'HEADING_RANK_MODEL_EXECUTION_TIME' => 'Execution time',
+    'HEADING_RANK_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* EntityContext */
+    'ENTITY_CONTEXT_MODEL_ID' => 'ID',
+    'ENTITY_CONTEXT_MODEL_CREATED_AT' => 'Created at',
+    'ENTITY_CONTEXT_MODEL_UPDATED_AT' => 'Updated at',
+    'ENTITY_CONTEXT_MODEL_CONTEXT' => 'Context',
+    'ENTITY_CONTEXT_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* ContextSimilarity */
+    'CONTEXT_SIMILARITY_MODEL_ID' => 'ID',
+    'CONTEXT_SIMILARITY_MODEL_CREATED_AT' => 'Created at',
+    'CONTEXT_SIMILARITY_MODEL_UPDATED_AT' => 'Updated at',
+    'CONTEXT_SIMILARITY_MODEL_DISTANCE' => 'Rank',
+    'CONTEXT_SIMILARITY_MODEL_EXECUTION_TIME' => 'Execution time',
+    'CONTEXT_SIMILARITY_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* ParentClass */
+    'PARENT_CLASS_MODEL_ID' => 'ID',
+    'PARENT_CLASS_MODEL_CREATED_AT' => 'Created at',
+    'PARENT_CLASS_MODEL_UPDATED_AT' => 'Updated at',
+    'PARENT_CLASS_MODEL_CLASS' => 'Class',
+    'PARENT_CLASS_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
+
+    /* SemanticSimilarity */
+    'SEMANTIC_SIMILARITY_MODEL_ID' => 'ID',
+    'SEMANTIC_SIMILARITY_MODEL_CREATED_AT' => 'Created at',
+    'SEMANTIC_SIMILARITY_MODEL_UPDATED_AT' => 'Updated at',
+    'SEMANTIC_SIMILARITY_MODEL_DISTANCE' => 'Rank',
+    'SEMANTIC_SIMILARITY_MODEL_EXECUTION_TIME' => 'Execution time',
+    'SEMANTIC_SIMILARITY_MODEL_CANDIDATE_ENTITY' => 'Candidate entity',
 ];

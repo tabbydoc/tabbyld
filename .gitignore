@@ -29,5 +29,14 @@ phpunit.phar
 tests/_output/*
 tests/_support/_generated
 
-#vagrant folder
+# vagrant folder
 /.vagrant
+
+# uploaded file folder
+/web/uploads/
+
+# dataset folder
+/web/dataset/
+
+# semantic table interpretation results folder
+/web/results/

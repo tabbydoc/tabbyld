@@ -80,6 +80,7 @@ return [
     'TABLE_ANNOTATION_PAGE_COLUMN_HEADING_PROPERTY_QUERY_RESULTS' => 'Результаты запроса по свойствам для ColumnHeading',
     'TABLE_ANNOTATION_PAGE_PARENT_CLASSES_FOR_ENTITY' => 'Родительские классы для: ',
     /* Сообщения для страницы аннотирования таблиц */
+    'TABLE_ANNOTATION_MESSAGE_UPLOAD_TABLE' => 'Вы успешно загрузили каноническую таблицу!',
     'TABLE_ANNOTATION_MESSAGE_ANNOTATE_TABLE' => 'Вы успешно аннотировали каноническую таблицу!',
     /* Страница модального окна для аннотирования таблиц */
     'TABLE_ANNOTATION_PAGE_SELECT_PARENT_CLASS' => 'Выбор родительского класса',
@@ -112,4 +113,116 @@ return [
     'LANG_MODEL_LOCAL' => 'Локаль',
     'LANG_MODEL_NAME' => 'Название',
     'LANG_MODEL_DEFAULT' => 'Язык по умолчанию',
+
+    /* AnnotatedDataset */
+    'ANNOTATED_DATASET_MODEL_ID' => 'ID',
+    'ANNOTATED_DATASET_MODEL_CREATED_AT' => 'Создан',
+    'ANNOTATED_DATASET_MODEL_UPDATED_AT' => 'Обновлен',
+    'ANNOTATED_DATASET_MODEL_NAME' => 'Название',
+    'ANNOTATED_DATASET_MODEL_AUTHOR' => 'Автор',
+    'ANNOTATED_DATASET_MODEL_STATUS' => 'Статус',
+    'ANNOTATED_DATASET_MODEL_ACCURACY' => 'Правильность',
+    'ANNOTATED_DATASET_MODEL_PRECISION' => 'Точность',
+    'ANNOTATED_DATASET_MODEL_RECALL' => 'Полнота',
+    'ANNOTATED_DATASET_MODEL_F_SCORE' => 'F-мера',
+    'ANNOTATED_DATASET_MODEL_RUNTIME' => 'Время выполнения',
+    'ANNOTATED_DATASET_MODEL_DESCRIPTION' => 'Описание',
+
+    /* AnnotatedCanonicalTable */
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ID' => 'ID',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_CREATED_AT' => 'Создана',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_UPDATED_AT' => 'Обновлена',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_NAME' => 'Название',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_TOTAL_ELEMENT_NUMBER' => 'Общее количество элементов',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_ELEMENT_NUMBER' => 'Количество аннотированных элементов',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_CORRECTLY_ANNOTATED_ELEMENT_NUMBER' =>
+        'Количество правильно аннотированных элементов',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ACCURACY' => 'Правильность',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_PRECISION' => 'Точность',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_RECALL' => 'Полнота',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_F_SCORE' => 'F-мера',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_RUNTIME' => 'Время выполнения',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_DESCRIPTION' => 'Описание',
+    'ANNOTATED_CANONICAL_TABLE_MODEL_ANNOTATED_DATASET' => 'Набор данных',
+
+    /* AnnotatedRow */
+    'ANNOTATED_ROW_MODEL_ID' => 'ID',
+    'ANNOTATED_ROW_MODEL_CREATED_AT' => 'Создана',
+    'ANNOTATED_ROW_MODEL_UPDATED_AT' => 'Обновлена',
+    'ANNOTATED_ROW_MODEL_DATA' => 'DATA',
+    'ANNOTATED_ROW_MODEL_ROW_HEADING' => 'RowHeading1',
+    'ANNOTATED_ROW_MODEL_COLUMN_HEADING' => 'ColumnHeading',
+    'ANNOTATED_ROW_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Таблица',
+
+    /* CellValue */
+    'CELL_VALUE_MODEL_ID' => 'ID',
+    'CELL_VALUE_MODEL_CREATED_AT' => 'Создано',
+    'CELL_VALUE_MODEL_UPDATED_AT' => 'Обновлено',
+    'CELL_VALUE_MODEL_NAME' => 'Название',
+    'CELL_VALUE_MODEL_TYPE' => 'Тип',
+    'CELL_VALUE_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'CELL_VALUE_MODEL_ANNOTATED_CANONICAL_TABLE' => 'Таблица',
+
+    /* CandidateEntity */
+    'CANDIDATE_ENTITY_MODEL_ID' => 'ID',
+    'CANDIDATE_ENTITY_MODEL_CREATED_AT' => 'Создана',
+    'CANDIDATE_ENTITY_MODEL_UPDATED_AT' => 'Обновлена',
+    'CANDIDATE_ENTITY_MODEL_ENTITY' => 'Сущность кандидат',
+    'CANDIDATE_ENTITY_MODEL_LEVENSHTEIN_DISTANCE' => 'Расстояние Левенштейна',
+    'CANDIDATE_ENTITY_MODEL_AGGREGATED_RANK' => 'Агрегированный ранг',
+    'CANDIDATE_ENTITY_MODEL_CELL_VALUE' => 'Значение ячейки',
+
+    /* RelationshipRank */
+    'RELATIONSHIP_RANK_MODEL_ID' => 'ID',
+    'RELATIONSHIP_RANK_MODEL_CREATED_AT' => 'Создан',
+    'RELATIONSHIP_RANK_MODEL_UPDATED_AT' => 'Обновлен',
+    'RELATIONSHIP_RANK_MODEL_DISTANCE' => 'Ранг',
+    'RELATIONSHIP_RANK_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'RELATIONSHIP_RANK_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* NerClassRank */
+    'NER_CLASS_RANK_MODEL_ID' => 'ID',
+    'NER_CLASS_RANK_MODEL_CREATED_AT' => 'Создан',
+    'NER_CLASS_RANK_MODEL_UPDATED_AT' => 'Обновлен',
+    'NER_CLASS_RANK_MODEL_DISTANCE' => 'Ранг',
+    'NER_CLASS_RANK_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'NER_CLASS_RANK_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* HeadingRank */
+    'HEADING_RANK_MODEL_ID' => 'ID',
+    'HEADING_RANK_MODEL_CREATED_AT' => 'Создан',
+    'HEADING_RANK_MODEL_UPDATED_AT' => 'Обновлен',
+    'HEADING_RANK_MODEL_DISTANCE' => 'Ранг',
+    'HEADING_RANK_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'HEADING_RANK_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* EntityContext */
+    'ENTITY_CONTEXT_MODEL_ID' => 'ID',
+    'ENTITY_CONTEXT_MODEL_CREATED_AT' => 'Создан',
+    'ENTITY_CONTEXT_MODEL_UPDATED_AT' => 'Обновлен',
+    'ENTITY_CONTEXT_MODEL_CONTEXT' => 'Контекст',
+    'ENTITY_CONTEXT_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* ContextSimilarity */
+    'CONTEXT_SIMILARITY_MODEL_ID' => 'ID',
+    'CONTEXT_SIMILARITY_MODEL_CREATED_AT' => 'Создан',
+    'CONTEXT_SIMILARITY_MODEL_UPDATED_AT' => 'Обновлен',
+    'CONTEXT_SIMILARITY_MODEL_DISTANCE' => 'Ранг',
+    'CONTEXT_SIMILARITY_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'CONTEXT_SIMILARITY_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* ParentClass */
+    'PARENT_CLASS_MODEL_ID' => 'ID',
+    'PARENT_CLASS_MODEL_CREATED_AT' => 'Создан',
+    'PARENT_CLASS_MODEL_UPDATED_AT' => 'Обновлен',
+    'PARENT_CLASS_MODEL_CLASS' => 'Класс',
+    'PARENT_CLASS_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
+
+    /* SemanticSimilarity */
+    'SEMANTIC_SIMILARITY_MODEL_ID' => 'ID',
+    'SEMANTIC_SIMILARITY_MODEL_CREATED_AT' => 'Создан',
+    'SEMANTIC_SIMILARITY_MODEL_UPDATED_AT' => 'Обновлен',
+    'SEMANTIC_SIMILARITY_MODEL_DISTANCE' => 'Ранг',
+    'SEMANTIC_SIMILARITY_MODEL_EXECUTION_TIME' => 'Время выполнения',
+    'SEMANTIC_SIMILARITY_MODEL_CANDIDATE_ENTITY' => 'Сущность кандидат',
 ];

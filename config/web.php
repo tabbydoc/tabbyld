@@ -39,7 +39,7 @@ $config = [
                 'contact' => 'main/default/contact',
                 'sing-in' => 'main/default/sing-in',
                 'annotate-table' => 'main/default/annotate-table',
-                'resulting-table' => 'main/default/resulting-table',
+                'export-rdf' => 'main/default/export-rdf',
             ],
         ],
         'cache' => [
@@ -79,6 +79,15 @@ $config = [
                 ],
             ],
         ],
+        'formatter' => [
+            'datetimeFormat' => 'dd.MM.Y HH:mm',
+            'timeZone' => 'UTC',
+        ],
+        // Подключение расширения для запуска консольных команд в фоновом режиме в среде Yii
+        'consoleRunner' => [
+            'class' => 'vova07\console\ConsoleRunner',
+            'file' => '@app/yii'
+        ]
     ],
     'params' => $params,
 ];

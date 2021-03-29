@@ -4,16 +4,14 @@
 
 use yii\bootstrap\Html;
 use yii\bootstrap\ActiveForm;
+use yii\bootstrap\ButtonDropdown;
 use app\components\CanonicalTableAnnotator;
-
 ?>
 
 <script type="text/javascript">
     // Выполнение скрипта при загрузке страницы
     $(document).ready(function () {
-        console.log(row_heading_entities);
-        console.log('---------------------');
-        console.log(column_heading_entities);
+        console.log(data_entities);
         // Каноническая таблица
         var resulting_canonical_table = document.getElementById("resulting_canonical-table");
         // Цикл по ячейкам канонической таблицы
@@ -30,28 +28,27 @@ use app\components\CanonicalTableAnnotator;
                         $.each(data_entities, function (id, value) {
                             if (string == id) {
                                 col.innerHTML += " (" + value.replace("http://dbpedia.org/resource/", "db:");
-                                $.each(parent_data_classes, function (index, parent_data_class) {
-                                    if (index == value) {
-                                        col.innerHTML += " - <a href='#' class='data-link' title='" + parent_data_class +
-                                            "' data-toggle='modal' data-target='#selectParentClassModalForm' " +
-                                            "annotated-entity='" + value + "'>" +
-                                            parent_data_class.replace("http://dbpedia.org/ontology/", "dbo:") + "</a>";
-                                    }
-                                });
+//                                $.each(parent_data_classes, function (index, parent_data_class) {
+//                                    if (index == value) {
+//                                        col.innerHTML += " - <a href='#' class='data-link' title='" + parent_data_class +
+//                                            "' data-toggle='modal' data-target='#selectParentClassModalForm' " +
+//                                            "annotated-entity='" + value + "'>" +
+//                                            parent_data_class.replace("http://dbpedia.org/ontology/", "dbo:") + "</a>";
+//                                    }
+//                                });
                                 col.innerHTML += ")";
                             }
                         });
                     // Если ячейка принадлежит столбцу "RowHeading1"
-                    //if (col.className == "row-heading-value")
-                        //console.log(row_heading_entities);
-//                        $.each(row_heading_entities, function (id, value) {
-//                            if (string == id) {
-//                                var abbreviated_parent_concept = value.replace("http://dbpedia.org/ontology/", "dbo:");
-//                                abbreviated_parent_concept =
-//                                    abbreviated_parent_concept.replace("http://dbpedia.org/resource/", "db:");
-//                                abbreviated_parent_concept =
-//                                    abbreviated_parent_concept.replace("http://dbpedia.org/property/", "dbp:");
-//                                col.innerHTML += " (" + abbreviated_parent_concept;
+                    if (col.className == "row-heading-value")
+                        $.each(row_heading_entities, function (id, value) {
+                            if (string == id) {
+                                var abbreviated_parent_concept = value[0][0].replace("http://dbpedia.org/ontology/", "dbo:");
+                                abbreviated_parent_concept =
+                                    abbreviated_parent_concept.replace("http://dbpedia.org/resource/", "db:");
+                                abbreviated_parent_concept =
+                                    abbreviated_parent_concept.replace("http://dbpedia.org/property/", "dbp:");
+                                col.innerHTML += " (" + abbreviated_parent_concept;
 //                                $.each(parent_row_heading_classes, function (index, parent_row_heading_class) {
 //                                    if (index == value)
 //                                        col.innerHTML += " - <a href='#' class='row-heading-link' title='" +
@@ -60,20 +57,19 @@ use app\components\CanonicalTableAnnotator;
 //                                            parent_row_heading_class.replace("http://dbpedia.org/ontology/", "dbo:") +
 //                                            "</a>";
 //                                });
-//                                col.innerHTML += ")";
-//                            }
-//                        });
+                                col.innerHTML += ")";
+                            }
+                        });
                     // Если ячейка принадлежит столбцу "ColumnHeading"
-                    //if (col.className == "column-heading-value")
-                        //console.log(column_heading_entities);
-//                        $.each(column_heading_entities, function (id, value) {
-//                            if (string == id) {
-//                                var abbreviated_parent_concept = value.replace("http://dbpedia.org/ontology/", "dbo:");
-//                                abbreviated_parent_concept =
-//                                    abbreviated_parent_concept.replace("http://dbpedia.org/resource/", "db:");
-//                                abbreviated_parent_concept =
-//                                    abbreviated_parent_concept.replace("http://dbpedia.org/property/", "dbp:");
-//                                col.innerHTML += " (" + abbreviated_parent_concept;
+                    if (col.className == "column-heading-value")
+                        $.each(column_heading_entities, function (id, value) {
+                            if (string == id) {
+                                var abbreviated_parent_concept = value[0][0].replace("http://dbpedia.org/ontology/", "dbo:");
+                                abbreviated_parent_concept =
+                                    abbreviated_parent_concept.replace("http://dbpedia.org/resource/", "db:");
+                                abbreviated_parent_concept =
+                                    abbreviated_parent_concept.replace("http://dbpedia.org/property/", "dbp:");
+                                col.innerHTML += " (" + abbreviated_parent_concept;
 //                                $.each(parent_column_heading_classes, function (index, parent_column_heading_class) {
 //                                    if (index == value)
 //                                        col.innerHTML += " - <a href='#' class='column-heading-link' title='" +
@@ -82,9 +78,9 @@ use app\components\CanonicalTableAnnotator;
 //                                            parent_column_heading_class.replace("http://dbpedia.org/ontology/", "dbo:") +
 //                                            "</a>";
 //                                });
-//                                col.innerHTML += ")";
-//                            }
-//                        });
+                                col.innerHTML += ")";
+                            }
+                        });
                     if (string_array.length > (str_key + 1))
                         col.innerHTML += " | ";
                 });
@@ -97,7 +93,7 @@ use app\components\CanonicalTableAnnotator;
             current_selected_row_heading_entity = null;
             current_selected_column_heading_entity = null;
             // Создание списка переключателей с родительскими классами кандидатами
-            createRadioInputs(current_selected_data_entity, parent_data_class_candidates, parent_data_classes);
+            //createRadioInputs(current_selected_data_entity, parent_data_class_candidates, parent_data_classes);
         });
         // Обработка нажатия ссылки в ячейке столбца "RowHeading1"
         $(".row-heading-link").click(function(e) {
@@ -106,8 +102,8 @@ use app\components\CanonicalTableAnnotator;
             current_selected_row_heading_entity = this.getAttribute("annotated-entity");
             current_selected_column_heading_entity = null;
             // Создание списка переключателей с родительскими классами кандидатами
-            createRadioInputs(current_selected_row_heading_entity, parent_row_heading_class_candidates,
-                parent_row_heading_classes);
+            //createRadioInputs(current_selected_row_heading_entity, parent_row_heading_class_candidates,
+            //    parent_row_heading_classes);
         });
         // Обработка нажатия ссылки в ячейке столбца "ColumnHeading"
         $(".column-heading-link").click(function(e) {
@@ -116,8 +112,8 @@ use app\components\CanonicalTableAnnotator;
             current_selected_row_heading_entity = null;
             current_selected_column_heading_entity = this.getAttribute("annotated-entity");
             // Создание списка переключателей с родительскими классами кандидатами
-            createRadioInputs(current_selected_column_heading_entity, parent_column_heading_class_candidates,
-                parent_column_heading_classes);
+            //createRadioInputs(current_selected_column_heading_entity, parent_column_heading_class_candidates,
+            //    parent_column_heading_classes);
         });
         // Обработка нажатия кнопки сохранения выбранного родительского класса
         $(".save-parent-class-button").click(function(e) {
@@ -126,25 +122,25 @@ use app\components\CanonicalTableAnnotator;
             // Список переключателей с родительскими классами кандидатами
             var parent_class_radio = document.getElementsByName("parent-class-radio");
             // Цикл по списку переключателей с родительскими классами кандидатами
-            for (var i = 0; i < parent_class_radio.length; i++)  {
-                if (parent_class_radio[i].checked) {
-                    // Если выбрана сущность из столбца "DATA"
-                    if (current_selected_data_entity)
-                        // Обновление отображения родительских классов в канонической таблице
-                        displayParentClasses(parent_data_classes, current_selected_data_entity,
-                            parent_class_radio[i].value, "data-link");
-                    // Если выбрана сущность из столбца "RowHeading1"
-                    if (current_selected_row_heading_entity)
-                        // Обновление отображения родительских классов в канонической таблице
-                        displayParentClasses(parent_row_heading_classes, current_selected_row_heading_entity,
-                            parent_class_radio[i].value, "row-heading-link");
-                    // Если выбрана сущность из столбца "ColumnHeading"
-                    if (current_selected_column_heading_entity)
-                        // Обновление отображения родительских классов в канонической таблице
-                        displayParentClasses(parent_column_heading_classes, current_selected_column_heading_entity,
-                            parent_class_radio[i].value, "column-heading-link");
-                }
-            }
+//            for (var i = 0; i < parent_class_radio.length; i++)  {
+//                if (parent_class_radio[i].checked) {
+//                    // Если выбрана сущность из столбца "DATA"
+//                    if (current_selected_data_entity)
+//                        // Обновление отображения родительских классов в канонической таблице
+//                        displayParentClasses(parent_data_classes, current_selected_data_entity,
+//                            parent_class_radio[i].value, "data-link");
+//                    // Если выбрана сущность из столбца "RowHeading1"
+//                    if (current_selected_row_heading_entity)
+//                        // Обновление отображения родительских классов в канонической таблице
+//                        displayParentClasses(parent_row_heading_classes, current_selected_row_heading_entity,
+//                            parent_class_radio[i].value, "row-heading-link");
+//                    // Если выбрана сущность из столбца "ColumnHeading"
+//                    if (current_selected_column_heading_entity)
+//                        // Обновление отображения родительских классов в канонической таблице
+//                        displayParentClasses(parent_column_heading_classes, current_selected_column_heading_entity,
+//                            parent_class_radio[i].value, "column-heading-link");
+//                }
+//            }
         });
     });
 </script>
@@ -155,14 +151,21 @@ use app\components\CanonicalTableAnnotator;
 
     <?= Html::Button('<span class="glyphicon glyphicon-download-alt"></span> ' .
         Yii::t('app', 'BUTTON_EXPORT_EXCEL_FILE'), [
-            'class' => 'btn btn-success save-parent-class-button'
+            'class' => 'btn btn-success'
     ]); ?>
 
-    <?= Html::Button('<span class="glyphicon glyphicon-download-alt"></span> ' .
-        Yii::t('app', 'BUTTON_EXPORT_RDF_FILE'), [
-            'class' => 'btn btn-success save-parent-class-button',
-            'style' => 'margin:5px'
-    ]); ?>
+    <?= ButtonDropdown::widget([
+        'label' => Yii::t('app', 'BUTTON_EXPORT_RDF_FILE'),
+        'dropdown' => [
+            'items' => [
+                ['label' => 'RDF/XML', 'url' => '/main/default/export-rdf'],
+                ['label' => 'Turtle', 'url' => '#'],
+            ],
+        ],
+        'options' => [
+            'class' => 'btn btn-success',
+        ]
+    ]);; ?>
 
 <?php ActiveForm::end(); ?>
 
