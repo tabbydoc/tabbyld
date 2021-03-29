@@ -10,7 +10,7 @@ TabbyLD is based on PHP 7 and [Yii 2 Framework](http://www.yiiframework.com/).
 [![Build Status](https://travis-ci.org/yiisoft/yii2-app-basic.svg?branch=master)](https://travis-ci.org/yiisoft/yii2-app-basic)
 
 
-###DIRECTORY STRUCTURE
+### DIRECTORY STRUCTURE
 
       assets/             contains assets definition
       commands/           contains console commands for creation of langs by-default and table data annotation
@@ -21,12 +21,12 @@ TabbyLD is based on PHP 7 and [Yii 2 Framework](http://www.yiiframework.com/).
       web/                contains the entry script and Web resources
 
 
-###REQUIREMENTS
+### REQUIREMENTS
 
 The minimum requirement by this project template that your Web server supports PHP 7.0 and PostgreSQL 9.0.
 
 
-###INSTALLATION
+### INSTALLATION
 
 #### Install via Composer
 
@@ -40,7 +40,7 @@ composer create-project tabbydoc/tabbyld
 ~~~
 
 
-###CONFIGURATION
+### CONFIGURATION
 
 #### Database
 
@@ -67,7 +67,7 @@ return [
 - TabbyLD won't create the database for you, this has to be done manually before you can access it.
 - Check and edit the other files in the `config/` directory to customize your application as required.
 
-###USING
+### USING
 
 #### Commands for configuring database
 
