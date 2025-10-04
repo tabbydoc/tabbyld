@@ -1,13 +1,17 @@
 # TabbyLD
 
-TabbyLD is a web-based software for semantic interpretation of spreadsheets.
+**TabbyLD** is a web-based software for semantic interpretation of spreadsheets.
 
-TabbyLD is based on PHP 7 and [Yii 2 Framework](http://www.yiiframework.com/).
-
+TabbyLD is based on [PHP 7](https://www.php.net/releases/7.0/ru.php) and [Yii 2 Framework](http://www.yiiframework.com/).
 
 [![Latest Stable Version](https://img.shields.io/packagist/v/yiisoft/yii2-app-basic.svg)](https://packagist.org/packages/yiisoft/yii2-app-basic)
 [![Total Downloads](https://img.shields.io/packagist/dt/yiisoft/yii2-app-basic.svg)](https://packagist.org/packages/yiisoft/yii2-app-basic)
 [![Build Status](https://travis-ci.org/yiisoft/yii2-app-basic.svg?branch=master)](https://travis-ci.org/yiisoft/yii2-app-basic)
+
+
+### Version
+
+1.0
 
 
 ### DIRECTORY STRUCTURE
@@ -30,8 +34,7 @@ The minimum requirement by this project template that your Web server supports P
 
 #### Install via Composer
 
-If you do not have [Composer](http://getcomposer.org/), you may install it by following the instructions
-at [getcomposer.org](http://getcomposer.org/doc/00-intro.md#installation-nix).
+If you do not have [Composer](http://getcomposer.org/), you may install it by following the instructions at [getcomposer.org](http://getcomposer.org/doc/00-intro.md#installation-nix).
 
 You can then install this editor using the following command:
 
@@ -94,4 +97,10 @@ php yii annotated-dataset/remove
 ~~~
 
 **NOTES:**
-- Commands are entered sequentially into the console, being in the folder with the project
+- Commands are entered sequentially into the console, being in the folder with the project.
+
+
+### AUTHORS
+
+* [Nikita O. Dorodnykh](mailto:tualatin32@mail.ru)
+* [Aleksandr Yu. Yurin](mailto:iskander@icc.ru)
