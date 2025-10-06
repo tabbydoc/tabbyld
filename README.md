@@ -20,6 +20,7 @@ TabbyLD is based on [PHP 7](https://www.php.net/releases/7.0/ru.php) and [Yii 2 
       commands/           contains console commands for creation of langs by-default and table data annotation
       components/         contains core modules for semantic table interpretation (CanonicaltableAnnotator and RDFCodeGenerator)
       config/             contains application configurations
+      migrations/         contains all database migrations
       modules/            contains single module:
           main/           contains controller, models and views
       web/                contains the entry script and Web resources
@@ -27,19 +28,18 @@ TabbyLD is based on [PHP 7](https://www.php.net/releases/7.0/ru.php) and [Yii 2 
 
 ### REQUIREMENTS
 
-The minimum requirement by this project template that your Web server supports PHP 7.0 and PostgreSQL 9.0.
+The minimum requirement by this project template that your Web server supports <b>PHP 7.0</b> and <b>PostgreSQL 9.0</b>.
 
 
 ### INSTALLATION
 
-#### Install via Composer
+### Install via Git
+If you do not have [Git](https://git-scm.com/), you can install [it](https://git-scm.com/downloads) depending on your OS.
 
-If you do not have [Composer](http://getcomposer.org/), you may install it by following the instructions at [getcomposer.org](http://getcomposer.org/doc/00-intro.md#installation-nix).
-
-You can then install this editor using the following command:
+You can clone this project into your directory (recommended installation):
 
 ~~~
-composer create-project tabbydoc/tabbyld
+git clone https://github.com/tabbydoc/tabbyld.git
 ~~~
 
 
@@ -74,11 +74,11 @@ return [
 
 #### Commands for configuring database
 
-Applying migrations (creating tables in database):
+Applying migrations (creating tables in a database):
 ~~~
 php yii migrate/up
 ~~~
-Creating default locale records in database:
+Creating default locale records in a database:
 ~~~
 php yii lang/create
 ~~~
